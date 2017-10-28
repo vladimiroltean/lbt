@@ -1,27 +1,7 @@
 var btnSave = document.getElementById("btnSave");
 var btnStartStop = document.getElementById("btnStartStop");
 
-var serverState = {
-	trafficRunning: false,
-	iperfFlows: [
-		{
-			source: "localhost",
-			destination: "localhost",
-			port: 5201,
-			transport: "tcp",
-			bandwidth: -1
-		}
-	],
-	pingFlows: [
-		{
-			source: "localhost",
-			destination: "localhost",
-			intervalType: "adaptive",
-			intervalMS: -1,
-			packetSize: 64
-		}
-	]
-}
+var serverState;
 
 /* Type of e is InputEvent.
  * Type of e.target is HTMLTableCellElement. */
@@ -159,10 +139,39 @@ function displayServerState() {
 	}
 }
 
-function sendServerState() {
-	window.alert(serverState);
+function xchgServerState(requestType) {
+	/* requestType is GET or POST */
+	var xhr = new XMLHttpRequest();
+	xhr.open(requestType, "blt.php");
+	xhr.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
+	xhr.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			try {
+				serverState = JSON.parse(this.responseText);
+				displayServerState();
+			} catch (e) {
+				window.alert(e.name + " while parsing JSON \"" +
+				             this.responseText + "\" from server: " +
+				             e.message);
+			}
+		}
+	};
+	if (requestType == "POST") {
+		xhr.send(JSON.stringify(serverState));
+	} else if (requestType == "GET") {
+		xhr.send();
+	}
+	btnSave.disabled = true;
 }
 
-displayServerState();
+function sendServerState() {
+	xchgServerState("POST");
+}
+
+function getServerState() {
+	xchgServerState("GET");
+}
+
+getServerState();
 
 btnSave.onclick = sendServerState;
