@@ -36,7 +36,9 @@ function changeFlow(e) {
 	} else {
 		window.alert("unrecognized change operation: row " + index +
 		             ", text " + text + ", class list " + classes);
+		return;
 	}
+	btnSave.disabled = false;
 }
 
 function addFlow() {
@@ -56,8 +58,9 @@ function addFlow() {
 			break;
 		default:
 			window.alert("Invalid selection!");
-			break;
+			return;
 	}
+	btnSave.disabled = false;
 }
 
 function removeFlow() {
@@ -90,6 +93,7 @@ function removeFlow() {
 	}
 	flows.splice(indexToRemove, 1);
 	displayServerState();
+	btnSave.disabled = false;
 }
 
 function displayServerState() {
