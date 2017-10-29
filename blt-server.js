@@ -11,9 +11,9 @@ function onHttpRequest(request, response) {
 			response.setHeader("Content-Type", "text/html");
 			response.end(html);
 			break;
-		case "/js/blt.js":
+		case "/js/blt-client.js":
 			response.setHeader("Content-Type", "application/javascript");
-			response.end(blt_js);
+			response.end(blt_client_js);
 			break;
 		/* REST method calls */
 		case "/flows":
@@ -129,7 +129,7 @@ var server = http.createServer();
 var url = require("url");
 var port = 8000;
 var html = readPlaintextFromFile("index.html", true);
-var blt_js = readPlaintextFromFile("js/blt.js", true);
+var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var state;
 createNewState(readPlaintextFromFile("flows.json", false),
 	function onSuccess(newState) {
