@@ -31,8 +31,8 @@ function onHttpRequest(request, response) {
 			break;
 		}
 		break;
-	case "POST":
-		console.log("POST " + request.url);
+	case "PUT":
+		console.log("PUT " + request.url);
 		switch (request.url) {
 		/* Only REST method calls */
 		case "/flows":

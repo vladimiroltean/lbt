@@ -150,7 +150,7 @@ function displayServerState() {
 }
 
 function xchgServerState(requestType) {
-	/* requestType is GET or POST */
+	/* requestType is GET or PUT */
 	var xhr = new XMLHttpRequest();
 	xhr.open(requestType, "/flows");
 	xhr.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
@@ -166,7 +166,7 @@ function xchgServerState(requestType) {
 			}
 		}
 	};
-	if (requestType == "POST") {
+	if (requestType == "PUT") {
 		xhr.send(JSON.stringify(serverState));
 	} else if (requestType == "GET") {
 		xhr.send();
@@ -175,7 +175,7 @@ function xchgServerState(requestType) {
 }
 
 function sendServerState() {
-	xchgServerState("POST");
+	xchgServerState("PUT");
 }
 
 function getServerState() {
