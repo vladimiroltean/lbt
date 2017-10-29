@@ -1,0 +1,17 @@
+{
+  "maintainers": [
+    {
+      "name": "Vladimir Oltean",
+      "email": "olteanv@gmail.com"
+    }
+  ],
+  "name": "blt",
+  "description": "Bandwidth and Latency Tester is a web application for generating and plotting iPerf and ping traffic",
+  "version": "0.0.1",
+  "license": "GPL-2.0",
+  "dependencies": {
+    "ssh2": "^0.5.5"
+  },
+  "readme": "README.md"
+}
+

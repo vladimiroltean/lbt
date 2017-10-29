@@ -152,7 +152,7 @@ function displayServerState() {
 function xchgServerState(requestType) {
 	/* requestType is GET or POST */
 	var xhr = new XMLHttpRequest();
-	xhr.open(requestType, "blt.php");
+	xhr.open(requestType, "/flows");
 	xhr.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
 	xhr.onreadystatechange = function() {
 		if (this.readyState == 4 && this.status == 200) {
