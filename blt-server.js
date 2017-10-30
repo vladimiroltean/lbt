@@ -62,6 +62,21 @@ function onHttpRequest(request, response) {
 			});
 			break;
 		case "/running":
+			request.on("data", function onData(data) {
+				if (data == "true") {
+					state.trafficRunning = true;
+				} else if (data == "false") {
+					state.trafficRunning = false;
+				} else {
+					console.log("invalid request body " + data);
+					response.statusCode = 400;
+					response.end();
+					return;
+				}
+				onStartStopTraffic();
+				response.setHeader("Content-Type", "text/plain");
+				response.end(state.trafficRunning.toString());
+			});
 			break;
 		default:
 			response.statusCode = 405;
@@ -75,6 +90,10 @@ function onHttpRequest(request, response) {
 		response.end();
 		break;
 	}
+}
+
+function onStartStopTraffic() {
+	console.log("traffic start/stop " + state.trafficRunning);
 }
 
 function onHttpListen() {

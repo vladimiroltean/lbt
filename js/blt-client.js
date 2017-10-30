@@ -149,7 +149,36 @@ function displayServerState() {
 	}
 }
 
-function xchgServerState(requestType) {
+function xchgServerRunningState(requestType) {
+	/* requestType is GET or PUT */
+	var xhr = new XMLHttpRequest();
+	xhr.open(requestType, "/running");
+	xhr.setRequestHeader("Content-Type", "text/plain; charset=UTF-8");
+	xhr.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			/* Expecting to find running state of server traffic */
+			switch (this.responseText) {
+			case "true":
+				serverState.trafficRunning = true;
+				break;
+			case "false":
+				serverState.trafficRunning = false;
+				break;
+			default:
+				window.alert("Invalid running state received from server: " + serverState);
+				return;
+			}
+			btnStartStop.innerHTML = (serverState.trafficRunning ? "Stop traffic" : "Start traffic");
+		}
+	};
+	if (requestType == "PUT") {
+		xhr.send(serverState.trafficRunning ? "false" : "true");
+	} else if (requestType == "GET") {
+		xhr.send();
+	}
+}
+
+function xchgServerFlows(requestType) {
 	/* requestType is GET or PUT */
 	var xhr = new XMLHttpRequest();
 	xhr.open(requestType, "/flows");
@@ -171,17 +200,16 @@ function xchgServerState(requestType) {
 	} else if (requestType == "GET") {
 		xhr.send();
 	}
-	btnSave.disabled = true;
 }
 
-function sendServerState() {
-	xchgServerState("PUT");
-}
-
-function getServerState() {
-	xchgServerState("GET");
-}
-
-getServerState();
-
-btnSave.onclick = sendServerState;
+window.onload = function() {
+	xchgServerFlows("GET");
+	xchgServerRunningState("GET");
+};
+btnSave.onclick = function() {
+	xchgServerFlows("PUT");
+	xchgServerRunningState("PUT");
+};
+btnStartStop.onclick = function() {
+	xchgServerRunningState("PUT");
+};
