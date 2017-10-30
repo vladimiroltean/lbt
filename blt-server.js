@@ -47,6 +47,7 @@ function onHttpRequest(request, response) {
 					function onSuccess(newState) {
 						state = newState;
 						var flowsString = JSON.stringify({ "iperfFlows": state.iperfFlows, "pingFlows": state.pingFlows });
+						response.setHeader("Content-Type", "application/json");
 						response.end(flowsString);
 						fs.writeFile("flows.json", flowsString, function onWrite() {
 							console.log("Successfully written flows to file.");
