@@ -65,16 +65,15 @@ function onHttpRequest(request, response) {
 		case "/running":
 			request.on("data", function onData(data) {
 				if (data == "true") {
-					state.trafficRunning = true;
+					onStartStopTraffic(true);
 				} else if (data == "false") {
-					state.trafficRunning = false;
+					onStartStopTraffic(false);
 				} else {
 					console.log("invalid request body " + data);
 					response.statusCode = 400;
 					response.end();
 					return;
 				}
-				onStartStopTraffic();
 				response.setHeader("Content-Type", "text/plain");
 				response.end(state.trafficRunning.toString());
 			});
@@ -93,8 +92,14 @@ function onHttpRequest(request, response) {
 	}
 }
 
-function onStartStopTraffic() {
-	console.log("traffic start/stop " + state.trafficRunning);
+function onStartStopTraffic(newTrafficState) {
+	console.log("traffic start/stop: old state " + state.trafficRunning + ", new state " + newTrafficState);
+	state.trafficRunning = newTrafficState;
+	var enabledFlows = {
+		iperfFlows: state.iperfFlows.filter(function(e) { return e.enabled }),
+		pingFlows: state.pingFlows.filter(function(e) { return e.enabled })
+	};
+	console.log(enabledFlows);
 }
 
 function onHttpListen() {
