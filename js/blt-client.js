@@ -103,6 +103,8 @@ function removeFlow() {
 function displayServerState() {
 	var iperfTable = document.getElementById("iperf-table").getElementsByTagName('tbody')[0];;
 	var  pingTable = document.getElementById("ping-table").getElementsByTagName('tbody')[0];;
+	var   editable = serverState.trafficRunning ? "" : "contenteditable";
+
 	iperfTable.innerHTML = "";
 	for (i = 0; i < serverState.iperfFlows.length; i++) {
 		var flow = serverState.iperfFlows[i];
@@ -111,12 +113,13 @@ function displayServerState() {
 		 * and the other classes to easily discern in the common
 		 * listener which field was changed */
 		newRow.innerHTML =
-			"<td><input type=\"checkbox\" class=\"editable iperf-enabled\"" + (flow.enabled ? " checked" : "") + "></td>" +
-			"<td contenteditable=\"true\" class=\"editable iperf-source\">" + flow.source + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable iperf-destination\">" + flow.destination + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable iperf-port\">" + flow.port + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable iperf-transport\">" + flow.transport + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable iperf-bandwidth\">" + flow.bandwidth + "</td>" +
+			"<td><input type=\"checkbox\" class=\"editable iperf-enabled\"" +
+				(flow.enabled ? " checked" : "") + (serverState.trafficRunning ? " disabled" : "") + "></td>" +
+			"<td " + editable + " class=\"editable iperf-source\">" + flow.source + "</td>" +
+			"<td " + editable + " class=\"editable iperf-destination\">" + flow.destination + "</td>" +
+			"<td " + editable + " class=\"editable iperf-port\">" + flow.port + "</td>" +
+			"<td " + editable + " class=\"editable iperf-transport\">" + flow.transport + "</td>" +
+			"<td " + editable + " class=\"editable iperf-bandwidth\">" + flow.bandwidth + "</td>" +
 			"<td><button type=\"button\" class=\"btnRemove\">-</button></td>"
 			;
 	}
@@ -125,12 +128,13 @@ function displayServerState() {
 		var flow = serverState.pingFlows[i];
 		var newRow = pingTable.insertRow(pingTable.rows.length);
 		newRow.innerHTML =
-			"<td><input type=\"checkbox\" class=\"editable ping-enabled\"" + (flow.enabled ? " checked" : "") + "></td>" +
-			"<td contenteditable=\"true\" class=\"editable ping-source\">" + flow.source + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable ping-destination\">" + flow.destination + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable ping-interval-type\">" + flow.intervalType + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable ping-interval-ms\">" + flow.intervalMS + "</td>" +
-			"<td contenteditable=\"true\" class=\"editable ping-packet-size\">" + flow.packetSize + "</td>" +
+			"<td><input type=\"checkbox\" class=\"editable ping-enabled\"" +
+				(flow.enabled ? " checked" : "") + (serverState.trafficRunning ? " disabled" : "") + "></td>" +
+			"<td " + editable + " class=\"editable ping-source\">" + flow.source + "</td>" +
+			"<td " + editable + " class=\"editable ping-destination\">" + flow.destination + "</td>" +
+			"<td " + editable + " class=\"editable ping-interval-type\">" + flow.intervalType + "</td>" +
+			"<td " + editable + " class=\"editable ping-interval-ms\">" + flow.intervalMS + "</td>" +
+			"<td " + editable + " class=\"editable ping-packet-size\">" + flow.packetSize + "</td>" +
 			"<td><button type=\"button\" class=\"btnRemove\">-</button></td>"
 			;
 	}
@@ -138,14 +142,17 @@ function displayServerState() {
 	var btnsAdd = document.getElementsByClassName("btnAdd");
 	for (i = 0; i < btnsAdd.length; i++) {
 		btnsAdd[i].onclick = addFlow;
+		btnsAdd[i].disabled = serverState.trafficRunning;
 	}
 	var btnsRemove = document.getElementsByClassName("btnRemove");
 	for (i = 0; i < btnsRemove.length; i++) {
 		btnsRemove[i].onclick = removeFlow;
+		btnsRemove[i].disabled = serverState.trafficRunning;
 	}
 	var editables = document.getElementsByClassName("editable");
 	for (i = 0; i < editables.length; i++) {
 		editables[i].oninput = changeFlow;
+		editables[i].disabled = serverState.trafficRunning;
 	}
 }
 
@@ -169,6 +176,7 @@ function xchgServerRunningState(requestType) {
 				return;
 			}
 			btnStartStop.innerHTML = (serverState.trafficRunning ? "Stop traffic" : "Start traffic");
+			displayServerState();
 		}
 	};
 	if (requestType == "PUT") {
