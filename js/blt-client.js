@@ -184,16 +184,24 @@ function xchgServerFlows(requestType) {
 	xhr.open(requestType, "/flows");
 	xhr.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
 	xhr.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
+		if (this.readyState != 4) return;
+		switch (this.status) {
+		case 200:
 			try {
 				serverState = JSON.parse(this.responseText);
 				displayServerState();
+				btnSave.disabled = true;
 			} catch (e) {
 				window.alert(e.name + " while parsing JSON \"" +
 				             this.responseText + "\" from server: " +
 				             e.message);
 			}
-			btnSave.disabled = true;
+			break;
+		case 405:
+			window.alert("Not allowed to change flow configuration while traffic is running!");
+			break;
+		default:
+			window.alert("Changing flows resulted in server error code " + this.status);
 		}
 	};
 	if (requestType == "PUT") {
