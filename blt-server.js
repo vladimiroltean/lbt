@@ -123,6 +123,12 @@ function readPlaintextFromFile(filename, exitOnFail) {
 	return content;
 }
 
+/* We create a new state object from the given flowsString
+ * interpreted as JSON.
+ * state.trafficRunning always gets initialized as false, because
+ * it is not semantically correct anyway to call this function
+ * while trafficRunning == true.
+ */
 function createNewState(flowsString, onSuccess, onFail) {
 	var state;
 	var flows;
