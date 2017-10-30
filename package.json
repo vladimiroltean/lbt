@@ -12,6 +12,10 @@
   "dependencies": {
     "ssh2": "^0.5.5"
   },
-  "readme": "README.md"
+  "readme": "README.md",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://github.com/vladimiroltean/blt.git"
+  }
 }
 
