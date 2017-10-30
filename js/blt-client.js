@@ -23,6 +23,8 @@ function changeFlow(e) {
 		serverState.iperfFlows[index].transport = text;
 	} else if (classes.contains("iperf-bandwidth")) {
 		serverState.iperfFlows[index].bandwidth = text;
+	} else if (classes.contains("iperf-label")) {
+		serverState.iperfFlows[index].label = text;
 	} else if (classes.contains("iperf-enabled")) {
 		serverState.iperfFlows[index].enabled = e.target.checked;
 	} else if (classes.contains("ping-source")) {
@@ -35,6 +37,8 @@ function changeFlow(e) {
 		serverState.pingFlows[index].intervalMS = text;
 	} else if (classes.contains("ping-packet-size")) {
 		serverState.pingFlows[index].packetSize = text;
+	} else if (classes.contains("ping-label")) {
+		serverState.pingFlows[index].label = text;
 	} else if (classes.contains("ping-enabled")) {
 		serverState.pingFlows[index].enabled = e.target.checked;
 	} else {
@@ -53,11 +57,11 @@ function addFlow() {
 	}
 	switch (parentTable.id) {
 		case "iperf-table":
-			serverState.iperfFlows.push({source: "n/a", destination: "n/a", port: "n/a", transport: "n/a", bandwidth: "n/a", enabled: false});
+			serverState.iperfFlows.push({source: "n/a", destination: "n/a", port: "n/a", transport: "n/a", bandwidth: "n/a", label: "n/a", enabled: false});
 			displayServerState();
 			break;
 		case "ping-table":
-			serverState.pingFlows.push({source: "n/a", destination: "n/a", intervalType: "n/a", intervalMS: "n/a", packetSize: "n/a", enabled: false});
+			serverState.pingFlows.push({source: "n/a", destination: "n/a", intervalType: "n/a", intervalMS: "n/a", packetSize: "n/a", label: "n/a", enabled: false});
 			displayServerState();
 			break;
 		default:
@@ -115,6 +119,7 @@ function displayServerState() {
 		newRow.innerHTML =
 			"<td><input type=\"checkbox\" class=\"editable iperf-enabled\"" +
 				(flow.enabled ? " checked" : "") + (serverState.trafficRunning ? " disabled" : "") + "></td>" +
+			"<td " + editable + " class=\"editable iperf-label\">" + flow.label + "</td>" +
 			"<td " + editable + " class=\"editable iperf-source\">" + flow.source + "</td>" +
 			"<td " + editable + " class=\"editable iperf-destination\">" + flow.destination + "</td>" +
 			"<td " + editable + " class=\"editable iperf-port\">" + flow.port + "</td>" +
@@ -130,6 +135,7 @@ function displayServerState() {
 		newRow.innerHTML =
 			"<td><input type=\"checkbox\" class=\"editable ping-enabled\"" +
 				(flow.enabled ? " checked" : "") + (serverState.trafficRunning ? " disabled" : "") + "></td>" +
+			"<td " + editable + " class=\"editable ping-label\">" + flow.label + "</td>" +
 			"<td " + editable + " class=\"editable ping-source\">" + flow.source + "</td>" +
 			"<td " + editable + " class=\"editable ping-destination\">" + flow.destination + "</td>" +
 			"<td " + editable + " class=\"editable ping-interval-type\">" + flow.intervalType + "</td>" +
