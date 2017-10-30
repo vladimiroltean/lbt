@@ -38,6 +38,7 @@ function onHttpRequest(request, response) {
 		case "/flows":
 			if (state.trafficRunning == true) {
 				/* Do not allow changes to flow configuration while traffic is running */
+				response.setHeader("Content-Type", "text/plain");
 				response.statusCode = 405;
 				response.end();
 				break;
