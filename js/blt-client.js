@@ -193,6 +193,7 @@ function xchgServerFlows(requestType) {
 				             this.responseText + "\" from server: " +
 				             e.message);
 			}
+			btnSave.disabled = true;
 		}
 	};
 	if (requestType == "PUT") {
@@ -208,7 +209,6 @@ window.onload = function() {
 };
 btnSave.onclick = function() {
 	xchgServerFlows("PUT");
-	xchgServerRunningState("PUT");
 };
 btnStartStop.onclick = function() {
 	xchgServerRunningState("PUT");
