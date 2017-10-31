@@ -241,6 +241,31 @@ function readPlaintextFromFile(filename, exitOnFail) {
 	return content;
 }
 
+/*
+ * state = {
+ *     trafficRunning: boolean,
+ *     iperfFlows: [
+ *         source: "user@host",
+ *         destination: "user@host",
+ *         port: integer,
+ *         transport: "tcp|udp",
+ *         bandwidth: integer,
+ *         enabled: boolean,
+ *         label: string,
+ *         data: [],
+ *     ],
+ *     pingFlows: [
+ *         source: "user@host",
+ *         destination: "user@host",
+ *         intervalType: "periodic|adaptive|flood",
+ *         intervalMS: integer,
+ *         enabled: boolean,
+ *         label: string,
+ *         data: []
+ *     ],
+ * };
+ */
+
 /* We create a new state object from the given flowsString
  * interpreted as JSON.
  * state.trafficRunning always gets initialized as false, because
