@@ -113,6 +113,10 @@ function onIperfClientConnReady() {
 	});
 }
 
+function replotIperf() {
+	console.log(flow.label + " data: " + JSON.stringify(flow.data));
+}
+
 /* this == f->serverConn */
 function onIperfServerConnReady() {
 	var flow = this.backlink;
@@ -126,17 +130,24 @@ function onIperfServerConnReady() {
 			this.end();
 		});
 		stream.on("data", (data) => {
-			console.log("STDOUT: %s", data);
 			if (data.includes("Server listening on " + flow.port)) {
 				/* iPerf Server managed to start up.
 				 * Time to connect to iPerf client and start
 				 * that up as well.
 				 */
 				flow.clientConn.connect(flow.clientConn.config);
+			} else if (data.includes("Mbits/sec")) {
+				var arr = data.toString().trim().split(/\ +/);
+				var bw = arr[arr.indexOf("Mbits/sec") - 1];
+				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
+				flow.data[time] = bw;
+				replotIperf();
+			} else {
+				console.log("%s Server STDOUT: %s", flow.label, data);
 			}
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("STDERR: %s", data);
+			console.log("%s Server STDERR: %s", flow.label, data);
 		});
 	});
 }
@@ -174,6 +185,7 @@ function startTraffic(enabledFlows) {
 			privateKey: fs.readFileSync(".ssh/id_rsa")
 		};
 		f.serverConn.connect(f.serverConn.config);
+		f.data = {};
 	});
 	state.trafficRunning = true;
 }
