@@ -7,7 +7,7 @@ var serverState;
  * Type of e.target is HTMLTableCellElement. */
 function changeFlow(e) {
 	var parentRow = e.target;
-	var text = e.target.innerHTML;
+	var text = e.target.innerText.trim();
 	while (parentRow.nodeName.toLowerCase() != "tr") {
 		parentRow = parentRow.parentElement;
 	}
