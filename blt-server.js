@@ -92,14 +92,113 @@ function onHttpRequest(request, response) {
 	}
 }
 
+/* this == f->clientConn */
+function onIperfClientConnReady() {
+	var flow = this.backlink;
+	var iperfCmd = "iperf3 -p " + flow.port + " -c " + flow.destination.split("@")[1];
+
+	console.log("iperf Client for %s :: conn ready", flow.label);
+	this.exec(iperfCmd, { pty: true }, (err, stream) => {
+		if (err) throw err;
+		stream.on("close", (code, signal) => {
+			console.log("iperf Client for %s :: close :: code: %s, signal: %s", flow.label, code, signal);
+			this.end();
+		});
+		stream.on("data", (data) => {
+			console.log("STDOUT: %s", data);
+		});
+		stream.stderr.on("data", (data) => {
+			console.log("STDERR: %s", data);
+		});
+	});
+}
+
+/* this == f->serverConn */
+function onIperfServerConnReady() {
+	var flow = this.backlink;
+	var iperfCmd = "iperf3 -1 -s -p " + flow.port;
+
+	console.log("iperf Server for %s :: conn ready", flow.label);
+	this.exec(iperfCmd, { pty: true }, (err, stream) => {
+		if (err) throw err;
+		stream.on("close", (code, signal) => {
+			console.log("iperf Server for %s :: close :: code: %s, signal: %s", flow.label, code, signal);
+			this.end();
+		});
+		stream.on("data", (data) => {
+			console.log("STDOUT: %s", data);
+			if (data.includes("Server listening on " + flow.port)) {
+				/* iPerf Server managed to start up.
+				 * Time to connect to iPerf client and start
+				 * that up as well.
+				 */
+				flow.clientConn.connect(flow.clientConn.config);
+			}
+		});
+		stream.stderr.on("data", (data) => {
+			console.log("STDERR: %s", data);
+		});
+	});
+}
+
+function startTraffic(enabledFlows) {
+	enabledFlows.iperfFlows.forEach(function (f) {
+		var srcArr = f.source.split("@");
+		var dstArr = f.destination.split("@");
+
+		f.clientConn = new sshClient();
+		f.clientConn.backlink = f;
+		f.clientConn.on("ready", onIperfClientConnReady);
+		f.clientConn.on("error", (e) => {
+			console.log("SSH connection error: " + e);
+			stopTraffic(enabledFlows);
+		});
+		f.clientConn.config = {
+			username: srcArr[0],
+			host: srcArr[1],
+			port: 22,
+			privateKey: fs.readFileSync(".ssh/id_rsa")
+		};
+
+		f.serverConn = new sshClient();
+		f.serverConn.backlink = f;
+		f.serverConn.on("ready", onIperfServerConnReady);
+		f.serverConn.on("error", (e) => {
+			console.log("SSH connection error: " + e);
+			stopTraffic(enabledFlows);
+		});
+		f.serverConn.config = {
+			username: dstArr[0],
+			host: dstArr[1],
+			port: 22,
+			privateKey: fs.readFileSync(".ssh/id_rsa")
+		};
+		f.serverConn.connect(f.serverConn.config);
+	});
+}
+
+function stopTraffic(enabledFlows) {
+	enabledFlows.iperfFlows.forEach(function (f) {
+		f.clientConn.end();
+		f.serverConn.end();
+	});
+}
+
 function onStartStopTraffic(newTrafficState) {
 	console.log("traffic start/stop: old state " + state.trafficRunning + ", new state " + newTrafficState);
-	state.trafficRunning = newTrafficState;
 	var enabledFlows = {
 		iperfFlows: state.iperfFlows.filter(function(e) { return e.enabled }),
 		pingFlows: state.pingFlows.filter(function(e) { return e.enabled })
 	};
-	console.log(enabledFlows);
+	switch (newTrafficState) {
+	case true:
+		startTraffic(enabledFlows);
+		break;
+	case false:
+		stopTraffic(enabledFlows);
+		break;
+	}
+	state.trafficRunning = newTrafficState;
 }
 
 function onHttpListen() {
@@ -157,6 +256,7 @@ process.on("SIGQUIT", onExit);
 
 var fs = require("fs");
 var http = require("http");
+var sshClient = require("ssh2").Client;
 var server = http.createServer();
 var url = require("url");
 var port = 8000;
