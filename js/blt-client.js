@@ -1,7 +1,7 @@
 var btnSave = document.getElementById("btnSave");
 var btnStartStop = document.getElementById("btnStartStop");
 
-var serverState;
+var serverState = {};
 
 /* Type of e is InputEvent.
  * Type of e.target is HTMLTableCellElement. */
