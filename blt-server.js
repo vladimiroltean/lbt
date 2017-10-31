@@ -192,8 +192,8 @@ function startTraffic(enabledFlows) {
 
 function stopTraffic(enabledFlows) {
 	enabledFlows.iperfFlows.forEach(function (f) {
-		f.clientConn.end();
-		f.serverConn.end();
+		if (f.clientConn !== undefined) { f.clientConn.end() };
+		if (f.serverConn !== undefined) { f.serverConn.end() };
 	});
 	state.trafficRunning = false;
 }
