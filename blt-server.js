@@ -175,6 +175,7 @@ function startTraffic(enabledFlows) {
 		};
 		f.serverConn.connect(f.serverConn.config);
 	});
+	state.trafficRunning = true;
 }
 
 function stopTraffic(enabledFlows) {
@@ -182,6 +183,7 @@ function stopTraffic(enabledFlows) {
 		f.clientConn.end();
 		f.serverConn.end();
 	});
+	state.trafficRunning = false;
 }
 
 function onStartStopTraffic(newTrafficState) {
@@ -198,7 +200,6 @@ function onStartStopTraffic(newTrafficState) {
 		stopTraffic(enabledFlows);
 		break;
 	}
-	state.trafficRunning = newTrafficState;
 }
 
 function onHttpListen() {
