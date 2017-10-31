@@ -120,7 +120,7 @@ function replotIperf() {
 /* this == f->serverConn */
 function onIperfServerConnReady() {
 	var flow = this.backlink;
-	var iperfCmd = "iperf3 -1 -s -p " + flow.port;
+	var iperfCmd = "iperf3 -1 -f m -i 0.5 -s -p " + flow.port;
 
 	console.log("iperf Server for %s :: conn ready", flow.label);
 	this.exec(iperfCmd, { pty: true }, (err, stream) => {
