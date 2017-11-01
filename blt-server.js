@@ -114,7 +114,19 @@ function onIperfClientConnReady() {
 }
 
 function replotIperf() {
-	console.log(flow.label + " data: " + JSON.stringify(flow.data));
+	var enabledFlows = {
+		iperfFlows: state.iperfFlows.filter(function(e) { return e.enabled }),
+		pingFlows: state.pingFlows.filter(function(e) { return e.enabled })
+	};
+	var iperfData = {};
+	enabledFlows.iperfFlows.forEach((f) => {
+		iperfData[f.label] = f.data;
+	});
+	plot({
+		data: iperfData,
+		format: "svg",
+		filename: "output.svg"
+	});
 }
 
 /* this == f->serverConn */
@@ -300,6 +312,7 @@ var url = require("url");
 var port = 8000;
 var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
+var plot = require("plotter").plot;
 var state;
 createNewState(readPlaintextFromFile("flows.json", false),
 	function onSuccess(newState) {
