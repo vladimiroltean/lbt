@@ -105,10 +105,10 @@ function onIperfClientConnReady() {
 			this.end();
 		});
 		stream.on("data", (data) => {
-			console.log("STDOUT: %s", data);
+			console.log("%s Client STDOUT: %s", flow.label, data);
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("STDERR: %s", data);
+			console.log("%s Client STDERR: %s", flow.label, data);
 		});
 	});
 }
