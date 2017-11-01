@@ -225,6 +225,28 @@ function xchgServerFlows(requestType) {
 	}
 }
 
+function initSSE() {
+	sseStream = new EventSource("/sse");
+	sseStream.onopen = function() {
+		console.log("Opened connection");
+	};
+	sseStream.onerror = function (event) {
+		console.log(event);
+	};
+	sseStream.onmessage = function (event) {
+		console.log(event.data);
+	};
+	sseStream.onclose = function(code, reason) {
+		console.log(code, reason);
+	};
+	/* Close the connection when the window is closed */
+	window.addEventListener("beforeunload", closeSSE);
+}
+
+function closeSSE() {
+	if (sseStream !== undefined) { sseStream.close(); }
+}
+
 window.onload = function() {
 	xchgServerFlows("GET");
 	xchgServerRunningState("GET");
@@ -234,4 +256,12 @@ btnSave.onclick = function() {
 };
 btnStartStop.onclick = function() {
 	xchgServerRunningState("PUT");
+	switch (serverState.trafficRunning) {
+	case true:
+		initSSE();
+		break;
+	case false:
+		closeSSE();
+		break;
+	}
 };

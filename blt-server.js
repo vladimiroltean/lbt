@@ -259,6 +259,11 @@ function onStartStopTraffic(newTrafficState) {
 		iperfFlows: state.iperfFlows.filter(function(e) { return e.enabled }),
 		pingFlows: state.pingFlows.filter(function(e) { return e.enabled })
 	};
+	if (newTrafficState == state.trafficRunning) {
+		/* This can happen when server restarted, but client
+		 * has stale information about its state. */
+		return;
+	}
 	switch (newTrafficState) {
 	case true:
 		startTraffic(enabledFlows);
