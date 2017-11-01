@@ -10,6 +10,7 @@
   "version": "0.0.1",
   "license": "GPL-2.0",
   "dependencies": {
+    "gnuplot": "^0.3.1",
     "plotter": "",
     "ssh2": "^0.5.5"
   },
@@ -19,4 +20,3 @@
     "url": "git+ssh://github.com/vladimiroltean/blt.git"
   }
 }
-

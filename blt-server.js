@@ -122,11 +122,11 @@ function replotIperf() {
 	enabledFlows.iperfFlows.forEach((f) => {
 		iperfData[f.label] = f.data;
 	});
-	plot({
+	state.iperfFlows.plotter.stdin.write(JSON.stringify({
 		data: iperfData,
 		format: "svg",
 		filename: "output.svg"
-	});
+	}));
 }
 
 /* this == f->serverConn */
@@ -153,7 +153,8 @@ function onIperfServerConnReady() {
 				var bw = arr[arr.indexOf("Mbits/sec") - 1];
 				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 				flow.data[time] = bw;
-				replotIperf();
+				/* replotIperf(); */
+				state.iperfFlows.plotter.stdin.write(time + " " + flow.label + " " + bw + "\n");
 			} else {
 				console.log("%s Server STDOUT: %s", flow.label, data);
 			}
@@ -199,7 +200,43 @@ function startTraffic(enabledFlows) {
 		f.serverConn.connect(f.serverConn.config);
 		f.data = {};
 	});
+	var iperfParams = [
+		"--stream", "0.5",
+		"--domain",
+		"--dataid",
+		"--exit",
+		"--lines",
+		"--ymin", 0,
+		"--ymax", 1000,
+		"--autolegend",
+		/* XXX @host1 */
+		"--style", "host1", 'linewidth 2 linecolor rgb "blue"',
+		"--style", "host2", 'linewidth 2 linecolor rgb "green"',
+		/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
+		"--xlen", "30",
+		"--xlabel", "Time",
+		"--ylabel", "Bandwidth",
+		"--title", "Peanut butter",
+		"--terminal", "svg"
+	];
 	state.trafficRunning = true;
+	state.iperfFlows.plotter = spawn("feedgnuplot", iperfParams);
+	state.iperfFlows.plotter.stdout.on("data", (data) => {
+		if (data.includes('<?xml version="1.0"')) {
+			/* New SVG coming. Do something with the old one. */
+			console.log("new svg %s", state.iperfFlows.plotter.svg);
+			state.iperfFlows.plotter.svg = data;
+		} else {
+			state.iperfFlows.plotter.svg += data;
+		}
+	});
+	state.iperfFlows.plotter.stderr.on("data", (data) => {
+		console.log("feedgnuplot stderr: %s", data);
+	});
+	state.iperfFlows.plotter.on("exit", (code) => {
+		console.log("feedgnuplot process exited with code %s", code);
+	});
+	state.iperfFlows.plotter.svg = "";
 }
 
 function stopTraffic(enabledFlows) {
@@ -207,6 +244,7 @@ function stopTraffic(enabledFlows) {
 		if (f.clientConn !== undefined) { f.clientConn.end() };
 		if (f.serverConn !== undefined) { f.serverConn.end() };
 	});
+	state.iperfFlows.plotter.stdin.end();
 	state.trafficRunning = false;
 }
 
@@ -312,7 +350,7 @@ var url = require("url");
 var port = 8000;
 var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
-var plot = require("plotter").plot;
+var spawn = require("child_process").spawn;
 var state;
 createNewState(readPlaintextFromFile("flows.json", false),
 	function onSuccess(newState) {
