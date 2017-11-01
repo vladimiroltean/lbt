@@ -10,6 +10,7 @@
   "version": "0.0.1",
   "license": "GPL-2.0",
   "dependencies": {
+    "sse": "^0.0.6",
     "ssh2": "^0.5.5"
   },
   "readme": "README.md",

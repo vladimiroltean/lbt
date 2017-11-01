@@ -18,8 +18,7 @@ function onHttpRequest(request, response) {
 		/* REST method calls */
 		case "/flows":
 			response.setHeader("Content-Type", "application/json");
-			var flows = { "iperfFlows": state.iperfFlows, "pingFlows": state.pingFlows };
-			response.end(JSON.stringify(flows));
+			response.end(curateStateForSend(state));
 			break;
 		case "/running":
 			response.setHeader("Content-Type", "text/plain");
@@ -122,7 +121,7 @@ function replotIperf() {
 	enabledFlows.iperfFlows.forEach((f) => {
 		iperfData[f.label] = f.data;
 	});
-	state.iperfFlows.plotter.stdin.write(JSON.stringify({
+	state.iperfPlotter.stdin.write(JSON.stringify({
 		data: iperfData,
 		format: "svg",
 		filename: "output.svg"
@@ -154,7 +153,7 @@ function onIperfServerConnReady() {
 				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 				flow.data[time] = bw;
 				/* replotIperf(); */
-				state.iperfFlows.plotter.stdin.write(time + " " + flow.label + " " + bw + "\n");
+				state.iperfPlotter.stdin.write(time + " " + flow.label + " " + bw + "\n");
 			} else {
 				console.log("%s Server STDOUT: %s", flow.label, data);
 			}
@@ -220,23 +219,29 @@ function startTraffic(enabledFlows) {
 		"--terminal", "svg"
 	];
 	state.trafficRunning = true;
-	state.iperfFlows.plotter = spawn("feedgnuplot", iperfParams);
-	state.iperfFlows.plotter.stdout.on("data", (data) => {
+	state.iperfPlotter = spawn("feedgnuplot", iperfParams);
+	state.iperfPlotter.stdout.on("data", (data) => {
 		if (data.includes('<?xml version="1.0"')) {
 			/* New SVG coming. Do something with the old one. */
-			console.log("new svg %s", state.iperfFlows.plotter.svg);
-			state.iperfFlows.plotter.svg = data;
+			console.log("new iperf svg %s", state.iperfPlotter.svg);
+
+			/* Send data back to the client */
+			state.clients.forEach((stream) => {
+				stream.send(JSON.stringify({ iperfSVG: state.iperfPlotter.svg }));
+			});
+
+			state.iperfPlotter.svg = data;
 		} else {
-			state.iperfFlows.plotter.svg += data;
+			state.iperfPlotter.svg += data;
 		}
 	});
-	state.iperfFlows.plotter.stderr.on("data", (data) => {
+	state.iperfPlotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 	});
-	state.iperfFlows.plotter.on("exit", (code) => {
+	state.iperfPlotter.on("exit", (code) => {
 		console.log("feedgnuplot process exited with code %s", code);
 	});
-	state.iperfFlows.plotter.svg = "";
+	state.iperfPlotter.svg = "";
 }
 
 function stopTraffic(enabledFlows) {
@@ -244,7 +249,7 @@ function stopTraffic(enabledFlows) {
 		if (f.clientConn !== undefined) { f.clientConn.end() };
 		if (f.serverConn !== undefined) { f.serverConn.end() };
 	});
-	state.iperfFlows.plotter.stdin.end();
+	state.iperfPlotter.stdin.end();
 	state.trafficRunning = false;
 }
 
@@ -266,6 +271,18 @@ function onStartStopTraffic(newTrafficState) {
 
 function onHttpListen() {
 	console.log("Server listening for http requests on port " + port);
+	/* initialize the /sse route */
+	SSE = require("sse");
+	sse = new SSE(server);
+
+	sse.on("connection", (stream) => {
+		console.log("sse :: established new connection");
+		state.clients.push(stream);
+		stream.on("close", () => {
+			state.clients.splice(state.clients.indexOf(stream), 1);
+			console.log("Closed connection");
+		});
+	});
 }
 
 function onHttpServerError(e) {
@@ -336,6 +353,11 @@ function createNewState(flowsString, onSuccess, onFail) {
 	return;
 }
 
+function curateStateForSend(state) {
+	var flows = { "iperfFlows": state.iperfFlows, "pingFlows": state.pingFlows };
+	return JSON.stringify(flows);
+}
+
 process.on("SIGHUP",  onExit);
 process.on("SIGINT",  onExit);
 process.on("SIGTERM", onExit);
@@ -351,6 +373,7 @@ var port = 8000;
 var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var spawn = require("child_process").spawn;
+var sse;
 var state;
 createNewState(readPlaintextFromFile("flows.json", false),
 	function onSuccess(newState) {
@@ -361,6 +384,7 @@ createNewState(readPlaintextFromFile("flows.json", false),
 		state = { trafficRunning: false, iperfFlows: [], pingFlows: [] };
 	}
 );
+state.clients = [];
 
 server.on("request", onHttpRequest);
 server.on("error", onHttpServerError);
