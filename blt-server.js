@@ -212,7 +212,8 @@ function startTraffic(enabledFlows) {
 
 			/* Send data back to the client */
 			state.clients.forEach((stream) => {
-				stream.send(JSON.stringify({ iperfSVG: state.iperfPlotter.svg }));
+				stream.send("event: iperf\n");
+				stream.send("data: " + JSON.stringify({ iperfSVG: state.iperfPlotter.svg }) + "\n\n");
 			});
 
 			state.iperfPlotter.svg = data;
