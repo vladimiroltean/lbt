@@ -205,7 +205,7 @@ function startIperfTraffic(iperfFlows) {
 		"--exit",
 		"--lines",
 		"--ymin", 0,
-		"--ymax", 1000,
+		//"--ymax", 1000,
 		"--autolegend",
 		/* XXX @host1 */
 		"--style", "host1", 'linewidth 2 linecolor rgb "blue"',
