@@ -25,8 +25,7 @@ function onHttpRequest(request, response) {
 			response.end(state.trafficRunning.toString());
 			break;
 		default:
-			response.statusCode = 404;
-			response.end();
+			httpLogErr(response, 404, "invalid url " + request.url);
 			break;
 		}
 		break;
@@ -36,10 +35,7 @@ function onHttpRequest(request, response) {
 		/* Only REST method calls */
 		case "/flows":
 			if (state.trafficRunning == true) {
-				/* Do not allow changes to flow configuration while traffic is running */
-				response.setHeader("Content-Type", "text/plain");
-				response.statusCode = 405;
-				response.end();
+				httpLogErr(response, 405, "Flow configuration changes are not alloed while traffic is running");
 				break;
 			}
 			request.on("data", function onData(data) {
@@ -54,9 +50,7 @@ function onHttpRequest(request, response) {
 						});
 					},
 					function onFail() {
-						console.log("cannot parse flows from " + data);
-						response.statusCode = 400;
-						response.end();
+						httpLogErr(response, 400, "cannot parse flows from " + data);
 					}
 				);
 			});
@@ -68,9 +62,7 @@ function onHttpRequest(request, response) {
 				} else if (data == "false") {
 					onStartStopTraffic(false);
 				} else {
-					console.log("invalid request body " + data);
-					response.statusCode = 400;
-					response.end();
+					httpLogErr(response, 400, "invalid request body " + data);
 					return;
 				}
 				response.setHeader("Content-Type", "text/plain");
@@ -78,17 +70,20 @@ function onHttpRequest(request, response) {
 			});
 			break;
 		default:
-			response.statusCode = 405;
-			response.end();
+			httpLogErr(response, 405, "invalid url for PUT: " + request.url);
 			break;
 		}
 		break;
 	default:
-		console.log("Unknown method %s called", request.method);
-		response.statusCode = 405;
-		response.end();
+		httpLogErr(response, 405, "Unknown method called: " + request.method);
 		break;
 	}
+}
+
+function httpLogErr(response, statusCode, text) {
+	response.setHeader("Content-Type", "text/plain");
+	response.statusCode = statusCode;
+	response.end(text);
 }
 
 /* this == f->clientConn */
