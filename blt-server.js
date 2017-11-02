@@ -152,14 +152,16 @@ function onGnuplotData(data, flowType) {
 	var plotter = (flowType == "iperf") ? state.iperfPlotter :
 	              (flowType == "ping") ? state.pingPlotter :
 	              undefined;
-	if (data.includes("<?xml")) {
-		/* New SVG coming. Do something with the old one
-		 * (that is now fully assembled),
-		 * like sending it to the SSE clients */
+	if (data.toString().includes("</svg>")) {
+		/* New SVG can be reassembled. */
+		var halves = data.toString().split("</svg>");
+		plotter.svg += halves[0] + "</svg>";
+		/* Send it to the SSE clients */
 		state.clients.forEach((stream) => {
 			stream.send(flowType, JSON.stringify({ svg: plotter.svg }));
 		});
-		plotter.svg = data;
+		/* Re-initialize the svg with the remainder */
+		plotter.svg = halves[1];
 	} else {
 		plotter.svg += data;
 	}
