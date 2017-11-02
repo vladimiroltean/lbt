@@ -148,8 +148,25 @@ function onIperfServerConnReady() {
 	});
 }
 
-function startTraffic(enabledFlows) {
-	enabledFlows.iperfFlows.forEach(function (f) {
+function onGnuplotData(data, flowType) {
+	var plotter = (flowType == "iperf") ? state.iperfPlotter :
+	              (flowType == "ping") ? state.pingPlotter :
+	              undefined;
+	if (data.includes("<?xml")) {
+		/* New SVG coming. Do something with the old one
+		 * (that is now fully assembled),
+		 * like sending it to the SSE clients */
+		state.clients.forEach((stream) => {
+			stream.send(flowType, JSON.stringify({ svg: plotter.svg }));
+		});
+		plotter.svg = data;
+	} else {
+		plotter.svg += data;
+	}
+}
+
+function startIperfTraffic(iperfFlows) {
+	iperfFlows.forEach((f) => {
 		var srcArr = f.source.split("@");
 		var dstArr = f.destination.split("@");
 
@@ -158,7 +175,7 @@ function startTraffic(enabledFlows) {
 		f.clientConn.on("ready", onIperfClientConnReady);
 		f.clientConn.on("error", (e) => {
 			console.log("SSH connection error: " + e);
-			stopTraffic(enabledFlows);
+			stopTraffic();
 		});
 		f.clientConn.config = {
 			username: srcArr[0],
@@ -173,7 +190,7 @@ function startTraffic(enabledFlows) {
 		f.serverConn.on("ready", onIperfServerConnReady);
 		f.serverConn.on("error", (e) => {
 			console.log("SSH connection error: " + e);
-			stopTraffic(enabledFlows);
+			stopTraffic();
 		});
 		f.serverConn.config = {
 			username: dstArr[0],
@@ -203,22 +220,8 @@ function startTraffic(enabledFlows) {
 		"--title", "Peanut butter",
 		"--terminal", "svg"
 	];
-	state.trafficRunning = true;
 	state.iperfPlotter = spawn("feedgnuplot", iperfParams);
-	state.iperfPlotter.stdout.on("data", (data) => {
-		if (data.includes("<?xml")) {
-			/* New SVG coming. Do something with the old one
-			 * (that is now fully assembled),
-			 * like sending it to the SSE clients */
-			state.clients.forEach((stream) => {
-				stream.send("iperf", JSON.stringify({ svg: state.iperfPlotter.svg }));
-			});
-
-			state.iperfPlotter.svg = data;
-		} else {
-			state.iperfPlotter.svg += data;
-		}
-	});
+	state.iperfPlotter.stdout.on("data", (data) => onGnuplotData(data, "iperf"));
 	state.iperfPlotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 	});
@@ -228,21 +231,87 @@ function startTraffic(enabledFlows) {
 	state.iperfPlotter.svg = "";
 }
 
-function stopTraffic(enabledFlows) {
-	enabledFlows.iperfFlows.forEach(function (f) {
-		if (f.clientConn !== undefined) { f.clientConn.end() };
-		if (f.serverConn !== undefined) { f.serverConn.end() };
+function startPingTraffic(pingFlows) {
+	pingFlows.forEach((f) => {
+		var srcArr = f.source.split("@");
+
+		f.clientConn = new sshClient();
+		f.clientConn.backlink = f;
+		f.clientConn.on("ready", onPingClientConnReady);
+		f.clientConn.on("error", (e) => {
+			console.log("SSH connection error: " + e);
+			stopTraffic();
+		});
+		f.clientConn.config = {
+			username: srcArr[0],
+			host: srcArr[1],
+			port: 22,
+			privateKey: fs.readFileSync(".ssh/id_rsa")
+		};
+		f.clientConn.connect(f.clientConn.config);
+		f.data = {};
+	});
+	var pingParams = [
+		"--stream", "0.5",
+		"--domain",
+		"--dataid",
+		"--exit",
+		"--lines",
+		"--ymin", 0,
+		"--ymax", 1000,
+		"--autolegend",
+		/* XXX @host1 */
+		"--style", "host1", 'linewidth 2 linecolor rgb "blue"',
+		"--style", "host2", 'linewidth 2 linecolor rgb "green"',
+		/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
+		"--xlen", "30",
+		"--xlabel", "Time",
+		"--ylabel", "Bandwidth",
+		"--title", "Peanut butter",
+		"--terminal", "svg"
+	];
+	return;
+	state.iperfPlotter = spawn("feedgnuplot", iperfParams);
+	state.iperfPlotter.stdout.on("data", (data) => onGnuplotData(data, "iperf"));
+	state.iperfPlotter.stderr.on("data", (data) => {
+		console.log("feedgnuplot stderr: %s", data);
+	});
+	state.iperfPlotter.on("exit", (code) => {
+		console.log("feedgnuplot process exited with code %s", code);
+	});
+	state.iperfPlotter.svg = "";
+}
+
+function startTraffic() {
+	var enabledFlows = {
+		iperfFlows: state.iperfFlows.filter((e) => { return e.enabled }),
+		pingFlows: state.pingFlows.filter((e) => { return e.enabled })
+	};
+	startIperfTraffic(enabledFlows.iperfFlows);
+	startPingTraffic(enabledFlows.pingFlows);
+	state.trafficRunning = true;
+}
+
+function stopTraffic() {
+	var enabledFlows = {
+		iperfFlows: state.iperfFlows.filter((e) => { return e.enabled }),
+		pingFlows: state.pingFlows.filter((e) => { return e.enabled })
+	};
+	enabledFlows.iperfFlows.forEach((f) => {
+		if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
+		if (typeof(f.serverConn) != "undefined") { f.serverConn.end() };
+	});
+	enabledFlows.pingFlows.forEach((f) => {
+		if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
 	});
 	state.iperfPlotter.stdin.end();
+	/* XXX */
+	//state.pingPlotter.stdin.end();
 	state.trafficRunning = false;
 }
 
 function onStartStopTraffic(newTrafficState) {
 	console.log("traffic start/stop: old state " + state.trafficRunning + ", new state " + newTrafficState);
-	var enabledFlows = {
-		iperfFlows: state.iperfFlows.filter(function(e) { return e.enabled }),
-		pingFlows: state.pingFlows.filter(function(e) { return e.enabled })
-	};
 	if (newTrafficState == state.trafficRunning) {
 		/* This can happen when server restarted, but client
 		 * has stale information about its state. */
@@ -250,10 +319,10 @@ function onStartStopTraffic(newTrafficState) {
 	}
 	switch (newTrafficState) {
 	case true:
-		startTraffic(enabledFlows);
+		startTraffic();
 		break;
 	case false:
-		stopTraffic(enabledFlows);
+		stopTraffic();
 		break;
 	}
 }
