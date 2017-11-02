@@ -173,9 +173,11 @@ function xchgServerRunningState(requestType) {
 			switch (this.responseText) {
 			case "true":
 				serverState.trafficRunning = true;
+				onServerStartTraffic();
 				break;
 			case "false":
 				serverState.trafficRunning = false;
+				onServerStopTraffic();
 				break;
 			default:
 				window.alert("Invalid running state received from server: " + serverState);
@@ -226,6 +228,7 @@ function xchgServerFlows(requestType) {
 }
 
 function initSSE() {
+	window.alert("initSSE");
 	sseStream = new EventSource("/sse");
 	sseStream.onopen = function() {
 		console.log("Opened connection");
@@ -240,12 +243,23 @@ function initSSE() {
 	sseStream.onclose = function(code, reason) {
 		console.log(code, reason);
 	};
+	sseStream.addEventListener("iperf", function (event) {
+		window.alert(event.data);
+	}, false);
 	/* Close the connection when the window is closed */
 	window.addEventListener("beforeunload", closeSSE);
 }
 
 function closeSSE() {
 	if (sseStream !== undefined) { sseStream.close(); }
+}
+
+function onServerStartTraffic() {
+	initSSE();
+}
+
+function onServerStopTraffic() {
+	closeSSE();
 }
 
 window.onload = function() {
@@ -257,12 +271,4 @@ btnSave.onclick = function() {
 };
 btnStartStop.onclick = function() {
 	xchgServerRunningState("PUT");
-	switch (serverState.trafficRunning) {
-	case true:
-		initSSE();
-		break;
-	case false:
-		closeSSE();
-		break;
-	}
 };
