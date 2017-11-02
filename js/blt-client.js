@@ -235,6 +235,7 @@ function initSSE() {
 	};
 	sseStream.onmessage = function (event) {
 		console.log(event.data);
+		window.alert(event.data);
 	};
 	sseStream.onclose = function(code, reason) {
 		console.log(code, reason);
