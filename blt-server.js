@@ -166,6 +166,7 @@ function startTraffic(enabledFlows) {
 			port: 22,
 			privateKey: fs.readFileSync(".ssh/id_rsa")
 		};
+		/* f.clientConn does not connect now */
 
 		f.serverConn = new sshClient();
 		f.serverConn.backlink = f;
