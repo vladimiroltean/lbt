@@ -235,7 +235,8 @@ function onSSEEvent(event) {
 	try {
 		var msg = JSON.parse(event.data);
 		var dom_node;
-		switch (event.id) {
+		console.log(event);
+		switch (event.type) {
 		case "iperf":
 			dom_node = document.getElementById("iperf-gnuplot");
 			break;
@@ -243,12 +244,12 @@ function onSSEEvent(event) {
 			dom_node = document.getElementById("ping-gnuplot");
 			break;
 		default:
-			throw new Error("invalid event id " + event.id);
+			throw new Error("invalid event type " + event.type);
 		}
 		dom_node.innerHTML = msg.svg;
 	} catch (e) {
-		window.alert('%s while parsing event "%s" from server: %s',
-		             e.name, event.data, e.message);
+		window.alert(e.name + ' while parsing event "' + event.data +
+		             ' from server: ' + e.message);
 	}
 }
 
