@@ -46,10 +46,10 @@ function onHttpRequest(request, response) {
 				createNewState(data,
 					function onSuccess(newState) {
 						state = newState;
-						var flowsString = JSON.stringify({ "iperfFlows": state.iperfFlows, "pingFlows": state.pingFlows });
+						var flows = curateStateForSend(state);
 						response.setHeader("Content-Type", "application/json");
-						response.end(flowsString);
-						fs.writeFile("flows.json", flowsString, function onWrite() {
+						response.end(flows);
+						fs.writeFile("flows.json", flows, function onWrite() {
 							console.log("Successfully written flows to file.");
 						});
 					},
@@ -358,8 +358,33 @@ function createNewState(flowsString, onSuccess, onFail) {
 	return;
 }
 
+/* The reason we start creating this from scratch is that
+ * we put a lot of extraneous stuff in the state, such as data,
+ * plotter, clientConn, serverConn, that we don't want to leak
+ */
 function curateStateForSend(state) {
-	var flows = { "iperfFlows": state.iperfFlows, "pingFlows": state.pingFlows };
+	var flows = { iperfFlows: [], pingFlows: [] };
+	state.iperfFlows.forEach((f) => {
+		flows.iperfFlows.push({
+			source: f.source,
+			destination: f.destination,
+			port: f.port,
+			transport: f.transport,
+			bandwidth: f.bandwidth,
+			enabled: f.enabled,
+			label: f.label
+		});
+	});
+	state.pingFlows.forEach((f) => {
+		flows.pingFlows.push({
+			source: f.source,
+			destination: f.destination,
+			intervalType: f.intervalType,
+			intervalMS: f.intervalMS,
+			enabled: f.enabled,
+			label: f.label
+		});
+	});
 	return JSON.stringify(flows);
 }
 
