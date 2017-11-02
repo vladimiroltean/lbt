@@ -235,7 +235,6 @@ function onSSEEvent(event) {
 	try {
 		var msg = JSON.parse(event.data);
 		var dom_node;
-		console.log(event);
 		switch (event.type) {
 		case "iperf":
 			dom_node = document.getElementById("iperf-gnuplot");
@@ -256,16 +255,18 @@ function onSSEEvent(event) {
 function initSSE() {
 	sseStream = new EventSource("/sse");
 	sseStream.onopen = function() {
-		console.log("Opened connection");
+		console.log("sse :: connection opened");
 	};
 	sseStream.onerror = function (event) {
-		console.log(event);
+		window.alert("sse :: connection error: " + event);
+		sseStream.close();
+		refresh();
 	};
 	sseStream.onmessage = function (event) {
-		console.log(event.data);
-		window.alert(event.data);
+		console.log("sse stream message: " + event.data);
 	};
 	sseStream.onclose = function(code, reason) {
+		console.log("sse :: connection closed");
 		console.log(code, reason);
 	};
 	sseStream.addEventListener("iperf", onSSEEvent);
@@ -287,10 +288,12 @@ function onServerStopTraffic() {
 	document.getElementById("ping-gnuplot").innerHTML = "";
 }
 
-window.onload = function() {
+function refresh() {
 	xchgServerFlows("GET");
 	xchgServerRunningState("GET");
 };
+
+window.onload = refresh;
 btnSave.onclick = function() {
 	xchgServerFlows("PUT");
 };
