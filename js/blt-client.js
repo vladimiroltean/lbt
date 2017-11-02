@@ -274,7 +274,7 @@ function initSSE() {
 }
 
 function closeSSE() {
-	if (sseStream !== undefined) { sseStream.close(); }
+	if (typeof(sseStream) != "undefined") { sseStream.close(); }
 }
 
 function onServerStartTraffic() {
