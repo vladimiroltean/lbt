@@ -206,7 +206,7 @@ function startTraffic(enabledFlows) {
 	state.trafficRunning = true;
 	state.iperfPlotter = spawn("feedgnuplot", iperfParams);
 	state.iperfPlotter.stdout.on("data", (data) => {
-		if (data.includes('<?xml version="1.0"')) {
+		if (data.includes("<?xml")) {
 			/* New SVG coming. Do something with the old one. */
 			console.log("new iperf svg %s", state.iperfPlotter.svg);
 
