@@ -227,8 +227,28 @@ function xchgServerFlows(requestType) {
 	}
 }
 
+function onSSEEvent(event) {
+	try {
+		var msg = JSON.parse(event.data);
+		var dom_node;
+		switch (event.id) {
+		case "iperf":
+			dom_node = document.getElementById("iperf-gnuplot");
+			break;
+		case "ping":
+			dom_node = document.getElementById("ping-gnuplot");
+			break;
+		default:
+			throw new Error("invalid event id " + event.id);
+		}
+		dom_node.innerHTML = msg.svg;
+	} catch (e) {
+		window.alert('%s while parsing event "%s" from server: %s',
+		             e.name, event.data, e.message);
+	}
+}
+
 function initSSE() {
-	window.alert("initSSE");
 	sseStream = new EventSource("/sse");
 	sseStream.onopen = function() {
 		console.log("Opened connection");
@@ -243,9 +263,7 @@ function initSSE() {
 	sseStream.onclose = function(code, reason) {
 		console.log(code, reason);
 	};
-	sseStream.addEventListener("iperf", function (event) {
-		window.alert(event.data);
-	}, false);
+	sseStream.addEventListener("iperf", onSSEEvent);
 	/* Close the connection when the window is closed */
 	window.addEventListener("beforeunload", closeSSE);
 }
@@ -260,6 +278,8 @@ function onServerStartTraffic() {
 
 function onServerStopTraffic() {
 	closeSSE();
+	document.getElementById("iperf-gnuplot").innerHTML = "";
+	document.getElementById("ping-gnuplot").innerHTML = "";
 }
 
 window.onload = function() {

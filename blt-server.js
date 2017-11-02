@@ -207,13 +207,11 @@ function startTraffic(enabledFlows) {
 	state.iperfPlotter = spawn("feedgnuplot", iperfParams);
 	state.iperfPlotter.stdout.on("data", (data) => {
 		if (data.includes("<?xml")) {
-			/* New SVG coming. Do something with the old one. */
-			console.log("new iperf svg %s", state.iperfPlotter.svg);
-
-			/* Send data back to the client */
+			/* New SVG coming. Do something with the old one
+			 * (that is now fully assembled),
+			 * like sending it to the SSE clients */
 			state.clients.forEach((stream) => {
-				stream.send("event: iperf\n");
-				stream.send("data: " + JSON.stringify({ iperfSVG: state.iperfPlotter.svg }) + "\n\n");
+				stream.send("iperf", JSON.stringify({ svg: state.iperfPlotter.svg }));
 			});
 
 			state.iperfPlotter.svg = data;
@@ -267,11 +265,13 @@ function onHttpListen() {
 	sse = new SSE(server);
 
 	sse.on("connection", (stream) => {
-		console.log("sse :: established new connection");
+		console.log("sse :: established new connection to %s",
+		            stream.res.connection.remoteAddress);
 		state.clients.push(stream);
 		stream.on("close", () => {
 			state.clients.splice(state.clients.indexOf(stream), 1);
-			console.log("Closed connection");
+			console.log("sse :: closed connection to %s",
+			            stream.res.connection.remoteAddress);
 		});
 	});
 }
