@@ -287,6 +287,7 @@ function startTraffic() {
 	startIperfTraffic(enabledFlows.iperfFlows);
 	startPingTraffic(enabledFlows.pingFlows);
 	state.trafficRunning = true;
+	state.clients = [];
 }
 
 function stopTraffic() {
@@ -304,6 +305,10 @@ function stopTraffic() {
 	state.iperfPlotter.stdin.end();
 	/* XXX */
 	//state.pingPlotter.stdin.end();
+	state.clients.forEach((stream) => {
+		stream.close();
+	});
+	state.clients = [];
 	state.trafficRunning = false;
 }
 
