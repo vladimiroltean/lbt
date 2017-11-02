@@ -112,22 +112,6 @@ function onIperfClientConnReady() {
 	});
 }
 
-function replotIperf() {
-	var enabledFlows = {
-		iperfFlows: state.iperfFlows.filter(function(e) { return e.enabled }),
-		pingFlows: state.pingFlows.filter(function(e) { return e.enabled })
-	};
-	var iperfData = {};
-	enabledFlows.iperfFlows.forEach((f) => {
-		iperfData[f.label] = f.data;
-	});
-	state.iperfPlotter.stdin.write(JSON.stringify({
-		data: iperfData,
-		format: "svg",
-		filename: "output.svg"
-	}));
-}
-
 /* this == f->serverConn */
 function onIperfServerConnReady() {
 	var flow = this.backlink;
@@ -152,7 +136,7 @@ function onIperfServerConnReady() {
 				var bw = arr[arr.indexOf("Mbits/sec") - 1];
 				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 				flow.data[time] = bw;
-				/* replotIperf(); */
+				/* Plot an extra iperf point */
 				state.iperfPlotter.stdin.write(time + " " + flow.label + " " + bw + "\n");
 			} else {
 				console.log("%s Server STDOUT: %s", flow.label, data);
