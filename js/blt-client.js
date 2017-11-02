@@ -172,12 +172,16 @@ function xchgServerRunningState(requestType) {
 			/* Expecting to find running state of server traffic */
 			switch (this.responseText) {
 			case "true":
-				serverState.trafficRunning = true;
-				onServerStartTraffic();
+				if (serverState.trafficRunning != true) {
+					serverState.trafficRunning = true;
+					onServerStartTraffic();
+				}
 				break;
 			case "false":
-				serverState.trafficRunning = false;
-				onServerStopTraffic();
+				if (serverState.trafficRunning != false) {
+					serverState.trafficRunning = false;
+					onServerStopTraffic();
+				}
 				break;
 			default:
 				window.alert("Invalid running state received from server: " + serverState);
