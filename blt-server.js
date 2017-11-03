@@ -39,20 +39,19 @@ function onHttpRequest(request, response) {
 				break;
 			}
 			request.on("data", function onData(data) {
-				createNewState(data,
-					function onSuccess(newState) {
-						state = newState;
-						var flows = curateStateForSend(state);
-						response.setHeader("Content-Type", "application/json");
-						response.end(flows);
-						fs.writeFile("flows.json", flows, function onWrite() {
-							console.log("Successfully written flows to file.");
-						});
-					},
-					function onFail() {
-						httpLogErr(response, 400, "cannot parse flows from " + data);
-					}
-				);
+				createNewState(data)
+				.then((newState) => {
+					state = newState;
+					var flows = curateStateForSend(state);
+					response.setHeader("Content-Type", "application/json");
+					response.end(flows);
+					fs.writeFile("flows.json", flows, function onWrite() {
+						console.log("Successfully written flows to file.");
+					});
+				})
+				.catch((reason) => {
+					httpLogErr(response, 400, "cannot parse flows from " + data);
+				});
 			});
 			break;
 		case "/running":
@@ -279,25 +278,25 @@ function startPingTraffic(pingFlows) {
 
 function startTraffic() {
 	var enabledFlows = {
-		iperfFlows: state.iperfFlows.filter((e) => { return e.enabled }),
-		pingFlows: state.pingFlows.filter((e) => { return e.enabled })
+		iperf: state.flows.iperf.filter((e) => { return e.enabled }),
+		ping:  state.flows.ping.filter( (e) => { return e.enabled })
 	};
-	startIperfTraffic(enabledFlows.iperfFlows);
-	startPingTraffic(enabledFlows.pingFlows);
+	startIperfTraffic(enabledFlows.iperf);
+	startPingTraffic(enabledFlows.ping);
 	state.running = true;
 	state.clients = [];
 }
 
 function stopTraffic() {
 	var enabledFlows = {
-		iperfFlows: state.iperfFlows.filter((e) => { return e.enabled }),
-		pingFlows: state.pingFlows.filter((e) => { return e.enabled })
+		iperf: state.flows.iperf.filter((e) => { return e.enabled }),
+		ping:  state.flows.ping.filter( (e) => { return e.enabled })
 	};
-	enabledFlows.iperfFlows.forEach((f) => {
+	enabledFlows.iperf.forEach((f) => {
 		if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
 		if (typeof(f.serverConn) != "undefined") { f.serverConn.end() };
 	});
-	enabledFlows.pingFlows.forEach((f) => {
+	enabledFlows.ping.forEach((f) => {
 		if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
 	});
 	state.iperfPlotter.stdin.end();
@@ -373,25 +372,34 @@ function readPlaintextFromFile(filename, exitOnFail) {
 /*
  * state = {
  *     running: boolean,
- *     iperfFlows: [
- *         source: "user@host",
- *         destination: "user@host",
- *         port: integer,
- *         transport: "tcp|udp",
- *         bandwidth: integer,
- *         enabled: boolean,
- *         label: string,
- *         data: [],
- *     ],
- *     pingFlows: [
- *         source: "user@host",
- *         destination: "user@host",
- *         intervalType: "periodic|adaptive|flood",
- *         intervalMS: integer,
- *         enabled: boolean,
- *         label: string,
- *         data: []
- *     ],
+ *     clients: [Client],
+ *     iperfPlotter: ChildProcess,
+ *     pingPlotter: ChildProcess,
+ *     flows: {
+ *         iperf: [
+ *             {
+ *                 source: "user@host",
+ *                 destination: "user@host",
+ *                 port: integer,
+ *                 transport: "tcp|udp",
+ *                 bandwidth: integer,
+ *                 enabled: boolean,
+ *                 label: string,
+ *                 data: [number],
+ *             }, (...)
+ *         ],
+ *         ping: [
+ *             {
+ *                 source: "user@host",
+ *                 destination: "user@host",
+ *                 intervalType: "periodic|adaptive|flood",
+ *                 intervalMS: integer,
+ *                 enabled: boolean,
+ *                 label: string,
+ *                 data: []
+ *             }, (...)
+ *         ]
+ *     }
  * };
  */
 
@@ -401,18 +409,19 @@ function readPlaintextFromFile(filename, exitOnFail) {
  * it is not semantically correct anyway to call this function
  * while running == true.
  */
-function createNewState(flowsString, onSuccess, onFail) {
-	var state;
-	var flows;
-	try {
-		flows = JSON.parse(flowsString);
-		state = { running: false, iperfFlows: flows.iperfFlows, pingFlows: flows.pingFlows };
-		onSuccess(state);
-	} catch (e) {
-		console.log(e.name + ": " + e.message);
-		onFail();
-	}
-	return;
+function createNewState(flowsString) {
+	return new Promise((resolve, reject) => {
+		try {
+			var newFlows = JSON.parse(flowsString);
+			resolve({
+				running: false,
+				clients: [],
+				flows: newFlows.flows
+			});
+		} catch (e) {
+			reject(e);
+		}
+	});
 }
 
 /* The reason we start creating this from scratch is that
@@ -420,9 +429,9 @@ function createNewState(flowsString, onSuccess, onFail) {
  * plotter, clientConn, serverConn, that we don't want to leak
  */
 function curateStateForSend(state) {
-	var flows = { iperfFlows: [], pingFlows: [] };
-	state.iperfFlows.forEach((f) => {
-		flows.iperfFlows.push({
+	var newFlows = { iperf: [], ping: [] };
+	state.flows.iperf.forEach((f) => {
+		newFlows.iperf.push({
 			source: f.source,
 			destination: f.destination,
 			port: f.port,
@@ -432,8 +441,8 @@ function curateStateForSend(state) {
 			label: f.label
 		});
 	});
-	state.pingFlows.forEach((f) => {
-		flows.pingFlows.push({
+	state.flows.ping.forEach((f) => {
+		newFlows.ping.push({
 			source: f.source,
 			destination: f.destination,
 			intervalType: f.intervalType,
@@ -442,7 +451,7 @@ function curateStateForSend(state) {
 			label: f.label
 		});
 	});
-	return JSON.stringify(flows);
+	return JSON.stringify(newFlows);
 }
 
 process.on("SIGHUP",  onExit);
@@ -462,16 +471,23 @@ var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var spawn = require("child_process").spawn;
 var sse;
 var state;
-createNewState(readPlaintextFromFile("flows.json", false),
-	function onSuccess(newState) {
-		state = newState;
-	},
-	function onFail() {
-		console.log("initializing with empty iperf and ping flows array");
-		state = { running: false, iperfFlows: [], pingFlows: [] };
-	}
-);
-state.clients = [];
+createNewState(readPlaintextFromFile("flows.json", false))
+.then((newState) => {
+	state = newState;
+})
+.catch((reason) => {
+	console.log("initializing with empty iperf and ping flows array");
+	state = {
+		running: false,
+		clients: [],
+		iperfPlotter: {},
+		pingPlotter: {},
+		flows: {
+			iperf: [],
+			ping: []
+		}
+	};
+});
 
 server.on("request", onHttpRequest);
 server.on("error", onHttpServerError);

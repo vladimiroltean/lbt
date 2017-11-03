@@ -3,8 +3,10 @@ var btnStartStop = document.getElementById("btnStartStop");
 
 var serverState = {
 	running: false,
-	iperfFlows: [],
-	pingFlows: []
+	flows: {
+		iperf: [],
+		ping: [],
+	}
 };
 
 /* Type of e is InputEvent.
@@ -18,33 +20,33 @@ function changeFlow(e) {
 	var classes = e.target.classList;
 	var index = parentRow.rowIndex - 1;
 	if (classes.contains("iperf-source")) {
-		serverState.iperfFlows[index].source = text;
+		serverState.flows.iperf[index].source = text;
 	} else if (classes.contains("iperf-destination")) {
-		serverState.iperfFlows[index].destination = text;
+		serverState.flows.iperf[index].destination = text;
 	} else if (classes.contains("iperf-port")) {
-		serverState.iperfFlows[index].port = text;
+		serverState.flows.iperf[index].port = text;
 	} else if (classes.contains("iperf-transport")) {
-		serverState.iperfFlows[index].transport = text;
+		serverState.flows.iperf[index].transport = text;
 	} else if (classes.contains("iperf-bandwidth")) {
-		serverState.iperfFlows[index].bandwidth = text;
+		serverState.flows.iperf[index].bandwidth = text;
 	} else if (classes.contains("iperf-label")) {
-		serverState.iperfFlows[index].label = text;
+		serverState.flows.iperf[index].label = text;
 	} else if (classes.contains("iperf-enabled")) {
-		serverState.iperfFlows[index].enabled = e.target.checked;
+		serverState.flows.iperf[index].enabled = e.target.checked;
 	} else if (classes.contains("ping-source")) {
-		serverState.pingFlows[index].source = text;
+		serverState.flows.ping[index].source = text;
 	} else if (classes.contains("ping-destination")) {
-		serverState.pingFlows[index].source = text;
+		serverState.flows.ping[index].source = text;
 	} else if (classes.contains("ping-interval-type")) {
-		serverState.pingFlows[index].intervalType = text;
+		serverState.flows.ping[index].intervalType = text;
 	} else if (classes.contains("ping-interval-ms")) {
-		serverState.pingFlows[index].intervalMS = text;
+		serverState.flows.ping[index].intervalMS = text;
 	} else if (classes.contains("ping-packet-size")) {
-		serverState.pingFlows[index].packetSize = text;
+		serverState.flows.ping[index].packetSize = text;
 	} else if (classes.contains("ping-label")) {
-		serverState.pingFlows[index].label = text;
+		serverState.flows.ping[index].label = text;
 	} else if (classes.contains("ping-enabled")) {
-		serverState.pingFlows[index].enabled = e.target.checked;
+		serverState.flows.ping[index].enabled = e.target.checked;
 	} else {
 		window.alert("unrecognized change operation: row " + index +
 		             ", text " + text + ", class list " + classes);
@@ -61,11 +63,27 @@ function addFlow() {
 	}
 	switch (parentTable.id) {
 		case "iperf-table":
-			serverState.iperfFlows.push({source: "n/a", destination: "n/a", port: "n/a", transport: "n/a", bandwidth: "n/a", label: "n/a", enabled: false});
+			serverState.flows.iperf.push({
+				source: "n/a",
+				destination: "n/a",
+				port: "n/a",
+				transport: "n/a",
+				bandwidth: "n/a",
+				label: "n/a",
+				enabled: false
+			});
 			displayServerState();
 			break;
 		case "ping-table":
-			serverState.pingFlows.push({source: "n/a", destination: "n/a", intervalType: "n/a", intervalMS: "n/a", packetSize: "n/a", label: "n/a", enabled: false});
+			serverState.flows.ping.push({
+				source: "n/a",
+				destination: "n/a",
+				intervalType: "n/a",
+				intervalMS: "n/a",
+				packetSize: "n/a",
+				label: "n/a",
+				enabled: false
+			});
 			displayServerState();
 			break;
 		default:
@@ -89,10 +107,10 @@ function removeFlow() {
 	var flows;
 	switch (parentTable.id) {
 		case "iperf-table":
-			flows = serverState.iperfFlows;
+			flows = serverState.flows.iperf;
 			break;
 		case "ping-table":
-			flows = serverState.pingFlows;
+			flows = serverState.flows.ping;
 			break;
 		default:
 			window.alert("Invalid selection!");
@@ -114,8 +132,8 @@ function displayServerState() {
 	var   editable = serverState.running ? "" : "contenteditable";
 
 	iperfTable.innerHTML = "";
-	for (i = 0; i < serverState.iperfFlows.length; i++) {
-		var flow = serverState.iperfFlows[i];
+	for (i = 0; i < serverState.flows.iperf.length; i++) {
+		var flow = serverState.flows.iperf[i];
 		var newRow = iperfTable.insertRow(iperfTable.rows.length);
 		/* we use the "editable" class to put input event listeners,
 		 * and the other classes to easily discern in the common
@@ -133,8 +151,8 @@ function displayServerState() {
 			;
 	}
 	pingTable.innerHTML = "";
-	for (i = 0; i < serverState.pingFlows.length; i++) {
-		var flow = serverState.pingFlows[i];
+	for (i = 0; i < serverState.flows.ping.length; i++) {
+		var flow = serverState.flows.ping[i];
 		var newRow = pingTable.insertRow(pingTable.rows.length);
 		newRow.innerHTML =
 			"<td><input type=\"checkbox\" class=\"editable ping-enabled\"" +
@@ -242,8 +260,7 @@ function closeSSE() {
 
 function onServerStateChanged(newState) {
 	if (typeof (newState.flows) != "undefined") {
-		serverState.iperfFlows = newState.flows.iperfFlows;
-		serverState.pingFlows = newState.flows.pingFlows;
+		serverState.flows = newState.flows;
 	}
 	if (typeof (newState.running) != "undefined") {
 		if (serverState.running == false && newState.running == true) {
@@ -275,10 +292,7 @@ function refresh() {
 
 window.onload = refresh;
 btnSave.onclick = function() {
-	xchgServerState("PUT", "/flows", {
-		iperfFlows: serverState.iperfFlows,
-		pingFlows: serverState.pingFlows
-	})
+	xchgServerState("PUT", "/flows", flows)
 	.then((flows) => { onServerStateChanged({flows: flows}); })
 	.catch((reason) => { console.log(reason); });
 };
