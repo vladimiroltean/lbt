@@ -232,17 +232,16 @@ function initSSE() {
 		console.log("sse :: connection opened");
 	};
 	sseStream.onerror = function (event) {
-		console.log("sse :: connection error");
-		console.log(event);
-		sseStream.close();
-		refresh();
+		if (event.eventPhase == EventSource.CLOSED) {
+			/* Server hung up */
+			closeSSE();
+		} else {
+			console.log("sse :: connection error");
+			console.log(event);
+		}
 	};
 	sseStream.onmessage = function (event) {
 		console.log("sse stream message: " + event.data);
-	};
-	sseStream.onclose = function(code, reason) {
-		console.log("sse :: connection closed");
-		console.log(code, reason);
 	};
 	sseStream.addEventListener("iperf", onSSEEvent);
 	/* Close the connection when the window is closed */
@@ -250,7 +249,11 @@ function initSSE() {
 }
 
 function closeSSE() {
-	if (typeof(sseStream) != "undefined") { sseStream.close(); }
+	if (typeof(sseStream) != "undefined") {
+		console.log("sse :: connection closed");
+		sseStream.close();
+		refresh();
+	}
 }
 
 function onServerStateChanged(newState) {

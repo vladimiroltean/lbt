@@ -107,6 +107,7 @@ function onIperfClientConnReady() {
 		stream.on("close", (code, signal) => {
 			console.log("iperf Client for %s :: close :: code: %s, signal: %s", flow.label, code, signal);
 			this.end();
+			stopTraffic();
 		});
 		stream.on("data", (data) => {
 			console.log("%s Client STDOUT: %s", flow.label, data);
@@ -128,6 +129,7 @@ function onIperfServerConnReady() {
 		stream.on("close", (code, signal) => {
 			console.log("iperf Server for %s :: close :: code: %s, signal: %s", flow.label, code, signal);
 			this.end();
+			stopTraffic();
 		});
 		stream.on("data", (data) => {
 			if (data.includes("Server listening on " + flow.port)) {
