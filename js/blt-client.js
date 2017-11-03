@@ -194,7 +194,7 @@ function xchgServerState(requestType, path, toSend) {
 					reject(e);
 				}
 			} else {
-				reject(new Error(this.status));
+				reject(new Error(this.status + ": " + this.responseText));
 			}
 		};
 		if (requestType == "PUT") {
@@ -271,6 +271,8 @@ function onServerStateChanged(newState) {
 			document.getElementById("ping-gnuplot").innerHTML = "";
 		}
 	}
+	btnSave.disabled = true;
+	console.log(serverState);
 	displayServerState();
 }
 

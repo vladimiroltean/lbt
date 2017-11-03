@@ -63,7 +63,7 @@ function onHttpRequest(request, response) {
 					});
 				})
 				.catch((reason) => {
-					httpLogErr(response, 400, "cannot parse flows from " + data);
+					httpLogErr(response, 400, "cannot parse flows from " + data + ", reason: " + reason);
 				});
 			});
 			break;
@@ -91,6 +91,7 @@ function onHttpRequest(request, response) {
 }
 
 function httpLogErr(response, statusCode, text) {
+	console.log("httpLogErr :: " + text);
 	response.setHeader("Content-Type", "text/plain");
 	response.statusCode = statusCode;
 	response.end(text);
@@ -429,6 +430,7 @@ function createNewState(flowsString) {
 	return new Promise((resolve, reject) => {
 		try {
 			var newFlows = JSON.parse(flowsString);
+			console.log(newFlows);
 			resolve({
 				running: false,
 				clients: [],
@@ -481,6 +483,7 @@ createNewState(readPlaintextFromFile("flows.json", false))
 	state = newState;
 })
 .catch((reason) => {
+	console.log(reason);
 	console.log("initializing with empty iperf and ping flows array");
 	state = {
 		running: false,
