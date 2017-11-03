@@ -2,7 +2,7 @@ var btnSave = document.getElementById("btnSave");
 var btnStartStop = document.getElementById("btnStartStop");
 
 var serverState = {
-	trafficRunning: false,
+	running: false,
 	iperfFlows: [],
 	pingFlows: []
 };
@@ -111,7 +111,7 @@ function removeFlow() {
 function displayServerState() {
 	var iperfTable = document.getElementById("iperf-table").getElementsByTagName('tbody')[0];;
 	var  pingTable = document.getElementById("ping-table").getElementsByTagName('tbody')[0];;
-	var   editable = serverState.trafficRunning ? "" : "contenteditable";
+	var   editable = serverState.running ? "" : "contenteditable";
 
 	iperfTable.innerHTML = "";
 	for (i = 0; i < serverState.iperfFlows.length; i++) {
@@ -122,7 +122,7 @@ function displayServerState() {
 		 * listener which field was changed */
 		newRow.innerHTML =
 			"<td><input type=\"checkbox\" class=\"editable iperf-enabled\"" +
-				(flow.enabled ? " checked" : "") + (serverState.trafficRunning ? " disabled" : "") + "></td>" +
+				(flow.enabled ? " checked" : "") + (serverState.running ? " disabled" : "") + "></td>" +
 			"<td " + editable + " class=\"editable iperf-label\">" + flow.label + "</td>" +
 			"<td " + editable + " class=\"editable iperf-source\">" + flow.source + "</td>" +
 			"<td " + editable + " class=\"editable iperf-destination\">" + flow.destination + "</td>" +
@@ -138,7 +138,7 @@ function displayServerState() {
 		var newRow = pingTable.insertRow(pingTable.rows.length);
 		newRow.innerHTML =
 			"<td><input type=\"checkbox\" class=\"editable ping-enabled\"" +
-				(flow.enabled ? " checked" : "") + (serverState.trafficRunning ? " disabled" : "") + "></td>" +
+				(flow.enabled ? " checked" : "") + (serverState.running ? " disabled" : "") + "></td>" +
 			"<td " + editable + " class=\"editable ping-label\">" + flow.label + "</td>" +
 			"<td " + editable + " class=\"editable ping-source\">" + flow.source + "</td>" +
 			"<td " + editable + " class=\"editable ping-destination\">" + flow.destination + "</td>" +
@@ -152,19 +152,19 @@ function displayServerState() {
 	var btnsAdd = document.getElementsByClassName("btnAdd");
 	for (i = 0; i < btnsAdd.length; i++) {
 		btnsAdd[i].onclick = addFlow;
-		btnsAdd[i].disabled = serverState.trafficRunning;
+		btnsAdd[i].disabled = serverState.running;
 	}
 	var btnsRemove = document.getElementsByClassName("btnRemove");
 	for (i = 0; i < btnsRemove.length; i++) {
 		btnsRemove[i].onclick = removeFlow;
-		btnsRemove[i].disabled = serverState.trafficRunning;
+		btnsRemove[i].disabled = serverState.running;
 	}
 	var editables = document.getElementsByClassName("editable");
 	for (i = 0; i < editables.length; i++) {
 		editables[i].oninput = changeFlow;
-		editables[i].disabled = serverState.trafficRunning;
+		editables[i].disabled = serverState.running;
 	}
-	btnStartStop.innerHTML = (serverState.trafficRunning) ? "Stop traffic" : "Start traffic";
+	btnStartStop.innerHTML = (serverState.running) ? "Stop traffic" : "Start traffic";
 }
 
 function xchgServerState(requestType, path, toSend) {
@@ -246,11 +246,11 @@ function onServerStateChanged(newState) {
 		serverState.pingFlows = newState.flows.pingFlows;
 	}
 	if (typeof (newState.running) != "undefined") {
-		if (serverState.trafficRunning == false && newState.running == true) {
-			serverState.trafficRunning = true;
+		if (serverState.running == false && newState.running == true) {
+			serverState.running = true;
 			initSSE();
-		} else if (serverState.trafficRunning == true && newState.running == false) {
-			serverState.trafficRunning = false;
+		} else if (serverState.running == true && newState.running == false) {
+			serverState.running = false;
 			closeSSE();
 			document.getElementById("iperf-gnuplot").innerHTML = "";
 			document.getElementById("ping-gnuplot").innerHTML = "";
@@ -267,7 +267,7 @@ function refresh() {
 	.then((array) => {
 		onServerStateChanged({
 			flows: array[0],
-			running: array[1].trafficRunning
+			running: array[1].running
 		});
 	})
 	.catch((reason) => { console.log(reason); });
@@ -284,7 +284,7 @@ btnSave.onclick = function() {
 };
 btnStartStop.onclick = function() {
 	xchgServerState("PUT", "/running", {
-		running: !serverState.trafficRunning
+		running: !serverState.running
 	})
 	.then((state) => { onServerStateChanged({ running: state.running }); })
 	.catch((reason) => { console.log(reason); });
