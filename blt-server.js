@@ -469,7 +469,7 @@ function curateStateForSend(state) {
 			label: f.label
 		});
 	});
-	return JSON.stringify(newFlows);
+	return JSON.stringify({ flows: newFlows });
 }
 
 process.on("SIGHUP",  onExit);

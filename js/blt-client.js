@@ -283,7 +283,7 @@ function refresh() {
 	])
 	.then((array) => {
 		onServerStateChanged({
-			flows: array[0],
+			flows: array[0].flows,
 			running: array[1].running
 		});
 	})
@@ -292,8 +292,8 @@ function refresh() {
 
 window.onload = refresh;
 btnSave.onclick = function() {
-	xchgServerState("PUT", "/flows", flows)
-	.then((flows) => { onServerStateChanged({flows: flows}); })
+	xchgServerState("PUT", "/flows", { flows: serverState.flows })
+	.then((state) => { onServerStateChanged({flows: state.flows}); })
 	.catch((reason) => { console.log(reason); });
 };
 btnStartStop.onclick = function() {
