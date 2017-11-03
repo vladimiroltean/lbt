@@ -9,6 +9,7 @@ var port = 8000;
 var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var spawn = require("child_process").spawn;
+var uuidv4 = require('uuid/v4');
 var sse;
 var state;
 
@@ -55,10 +56,19 @@ function onHttpRequest(request, response) {
 				createNewState(data)
 				.then((newState) => {
 					state = newState;
-					var flows = curateStateForSend(state);
+					/* Append unique identifiers to each flow
+					 * (to be distinguished by gnuplot) */
+					["iperf", "ping"].forEach((type) => {
+						state.flows[type].forEach((f) => {
+							f.id = uuidv4();
+						});
+					});
+					/* Send flows back to client, as
+					 * part of confirmation */
+					var flowsString = curateStateForSend(state);
 					response.setHeader("Content-Type", "application/json");
-					response.end(flows);
-					fs.writeFile("flows.json", flows, function onWrite() {
+					response.end(flowsString);
+					fs.writeFile("flows.json", flowsString, function onWrite() {
 						console.log("Successfully written flows to file.");
 					});
 				})
@@ -146,7 +156,7 @@ function onIperfServerConnReady() {
 				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 				flow.data[time] = bw;
 				/* Plot an extra iperf point */
-				state.iperfPlotter.stdin.write(time + " " + flow.label + " " + bw + "\n");
+				state.iperfPlotter.stdin.write(time + " " + flow.id + " " + bw + "\n");
 			} else {
 				console.log("%s Server STDOUT: %s", flow.label, data);
 			}
@@ -177,7 +187,28 @@ function onGnuplotData(data, flowType) {
 }
 
 function startIperfTraffic(iperfFlows) {
+	var iperfParams = [
+		"--stream", "0.5",
+		"--domain",
+		"--dataid",
+		"--exit",
+		"--lines",
+		"--ymin", 0,
+		//"--ymax", 1000,
+		"--autolegend",
+		/* XXX @host1 */
+		/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
+		"--xlen", "30",
+		"--xlabel", "Time (seconds)",
+		"--ylabel", "Bandwidth (Mbps)",
+		"--title", "iPerf3 Bandwidth",
+		"--terminal", "svg"
+	];
+
 	iperfFlows.forEach((f) => {
+		iperfParams.push("--style", f.id, 'linewidth 2 linecolor rgb "blue"');
+		iperfParams.push("--legend", f.id, f.label);
+
 		var srcArr = f.source.split("@");
 		var dstArr = f.destination.split("@");
 
@@ -212,34 +243,16 @@ function startIperfTraffic(iperfFlows) {
 		f.serverConn.connect(f.serverConn.config);
 		f.data = {};
 	});
-	var iperfParams = [
-		"--stream", "0.5",
-		"--domain",
-		"--dataid",
-		"--exit",
-		"--lines",
-		"--ymin", 0,
-		//"--ymax", 1000,
-		"--autolegend",
-		/* XXX @host1 */
-		"--style", "host1", 'linewidth 2 linecolor rgb "blue"',
-		"--style", "host2", 'linewidth 2 linecolor rgb "green"',
-		/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
-		"--xlen", "30",
-		"--xlabel", "Time",
-		"--ylabel", "Bandwidth",
-		"--title", "Peanut butter",
-		"--terminal", "svg"
-	];
-	state.iperfPlotter = spawn("feedgnuplot", iperfParams);
-	state.iperfPlotter.stdout.on("data", (data) => onGnuplotData(data, "iperf"));
-	state.iperfPlotter.stderr.on("data", (data) => {
+	var plotter = spawn("feedgnuplot", iperfParams);
+	plotter.stdout.on("data", (data) => onGnuplotData(data, "iperf"));
+	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 	});
-	state.iperfPlotter.on("exit", (code) => {
+	plotter.on("exit", (code) => {
 		console.log("feedgnuplot process exited with code %s", code);
 	});
-	state.iperfPlotter.svg = "";
+	plotter.svg = "";
+	state.iperfPlotter = plotter;
 }
 
 function startPingTraffic(pingFlows) {
