@@ -1,5 +1,17 @@
 #!/usr/bin/env node
 
+var fs = require("fs");
+var http = require("http");
+var sshClient = require("ssh2").Client;
+var server = http.createServer();
+var url = require("url");
+var port = 8000;
+var html = readPlaintextFromFile("index.html", true);
+var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
+var spawn = require("child_process").spawn;
+var sse;
+var state;
+
 function onHttpRequest(request, response) {
 	switch (request.method) {
 	case "GET":
@@ -461,17 +473,6 @@ process.on("SIGTERM", onExit);
 process.on("SIGABRT", onExit);
 process.on("SIGQUIT", onExit);
 
-var fs = require("fs");
-var http = require("http");
-var sshClient = require("ssh2").Client;
-var server = http.createServer();
-var url = require("url");
-var port = 8000;
-var html = readPlaintextFromFile("index.html", true);
-var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
-var spawn = require("child_process").spawn;
-var sse;
-var state;
 createNewState(readPlaintextFromFile("flows.json", false))
 .then((newState) => {
 	state = newState;
