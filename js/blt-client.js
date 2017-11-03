@@ -1,7 +1,11 @@
 var btnSave = document.getElementById("btnSave");
 var btnStartStop = document.getElementById("btnStartStop");
 
-var serverState = {};
+var serverState = {
+	trafficRunning: false,
+	iperfFlows: [],
+	pingFlows: []
+};
 
 /* Type of e is InputEvent.
  * Type of e.target is HTMLTableCellElement. */
@@ -160,75 +164,32 @@ function displayServerState() {
 		editables[i].oninput = changeFlow;
 		editables[i].disabled = serverState.trafficRunning;
 	}
+	btnStartStop.innerHTML = (serverState.trafficRunning) ? "Stop traffic" : "Start traffic";
 }
 
-function xchgServerRunningState(requestType) {
-	/* requestType is GET or PUT */
-	var xhr = new XMLHttpRequest();
-	xhr.open(requestType, "/running");
-	xhr.setRequestHeader("Content-Type", "text/plain; charset=UTF-8");
-	xhr.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-			/* Expecting to find running state of server traffic */
-			switch (this.responseText) {
-			case "true":
-				if (serverState.trafficRunning != true) {
-					serverState.trafficRunning = true;
-					onServerStartTraffic();
+function xchgServerState(requestType, path, toSend) {
+	return new Promise((resolve, reject) => {
+		/* requestType is GET or PUT */
+		var xhr = new XMLHttpRequest();
+		xhr.open(requestType, path);
+		xhr.setRequestHeader("Content-Type", "application/json");
+		xhr.onload = function() {
+			if (this.status >= 200 && this.status < 300) {
+				try {
+					resolve(JSON.parse(this.responseText));
+				} catch (e) {
+					reject(e);
 				}
-				break;
-			case "false":
-				if (serverState.trafficRunning != false) {
-					serverState.trafficRunning = false;
-					onServerStopTraffic();
-				}
-				break;
-			default:
-				window.alert("Invalid running state received from server: " + serverState);
-				return;
+			} else {
+				reject(new Error(this.status));
 			}
-			btnStartStop.innerHTML = (serverState.trafficRunning ? "Stop traffic" : "Start traffic");
-			displayServerState();
+		};
+		if (requestType == "PUT") {
+			xhr.send(JSON.stringify(toSend));
+		} else if (requestType == "GET") {
+			xhr.send();
 		}
-	};
-	if (requestType == "PUT") {
-		xhr.send(serverState.trafficRunning ? "false" : "true");
-	} else if (requestType == "GET") {
-		xhr.send();
-	}
-}
-
-function xchgServerFlows(requestType) {
-	/* requestType is GET or PUT */
-	var xhr = new XMLHttpRequest();
-	xhr.open(requestType, "/flows");
-	xhr.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
-	xhr.onreadystatechange = function() {
-		if (this.readyState != 4) return;
-		switch (this.status) {
-		case 200:
-			try {
-				serverState = JSON.parse(this.responseText);
-				displayServerState();
-				btnSave.disabled = true;
-			} catch (e) {
-				window.alert(e.name + " while parsing JSON \"" +
-				             this.responseText + "\" from server: " +
-				             e.message);
-			}
-			break;
-		case 405:
-			window.alert("Not allowed to change flow configuration while traffic is running!");
-			break;
-		default:
-			window.alert("Changing flows resulted in server error code " + this.status);
-		}
-	};
-	if (requestType == "PUT") {
-		xhr.send(JSON.stringify(serverState));
-	} else if (requestType == "GET") {
-		xhr.send();
-	}
+	});
 }
 
 function onSSEEvent(event) {
@@ -279,25 +240,52 @@ function closeSSE() {
 	if (typeof(sseStream) != "undefined") { sseStream.close(); }
 }
 
-function onServerStartTraffic() {
-	initSSE();
-}
-
-function onServerStopTraffic() {
-	closeSSE();
-	document.getElementById("iperf-gnuplot").innerHTML = "";
-	document.getElementById("ping-gnuplot").innerHTML = "";
+function onServerStateChanged(newState) {
+	if (typeof (newState.flows) != "undefined") {
+		serverState.iperfFlows = newState.flows.iperfFlows;
+		serverState.pingFlows = newState.flows.pingFlows;
+	}
+	if (typeof (newState.running) != "undefined") {
+		if (serverState.trafficRunning == false && newState.running == true) {
+			serverState.trafficRunning = true;
+			initSSE();
+		} else if (serverState.trafficRunning == true && newState.running == false) {
+			serverState.trafficRunning = false;
+			closeSSE();
+			document.getElementById("iperf-gnuplot").innerHTML = "";
+			document.getElementById("ping-gnuplot").innerHTML = "";
+		}
+	}
+	displayServerState();
 }
 
 function refresh() {
-	xchgServerFlows("GET");
-	xchgServerRunningState("GET");
+	Promise.all([
+		xchgServerState("GET", "/flows"),
+		xchgServerState("GET", "/running")
+	])
+	.then((array) => {
+		onServerStateChanged({
+			flows: array[0],
+			running: array[1].trafficRunning
+		});
+	})
+	.catch((reason) => { console.log(reason); });
 };
 
 window.onload = refresh;
 btnSave.onclick = function() {
-	xchgServerFlows("PUT");
+	xchgServerState("PUT", "/flows", {
+		iperfFlows: serverState.iperfFlows,
+		pingFlows: serverState.pingFlows
+	})
+	.then((flows) => { onServerStateChanged({flows: flows}); })
+	.catch((reason) => { console.log(reason); });
 };
 btnStartStop.onclick = function() {
-	xchgServerRunningState("PUT");
+	xchgServerState("PUT", "/running", {
+		running: !serverState.trafficRunning
+	})
+	.then((state) => { onServerStateChanged({ running: state.running }); })
+	.catch((reason) => { console.log(reason); });
 };

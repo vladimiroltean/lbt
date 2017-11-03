@@ -21,8 +21,8 @@ function onHttpRequest(request, response) {
 			response.end(curateStateForSend(state));
 			break;
 		case "/running":
-			response.setHeader("Content-Type", "text/plain");
-			response.end(state.trafficRunning.toString());
+			response.setHeader("Content-Type", "application/json");
+			response.end(JSON.stringify({ running: state.trafficRunning }));
 			break;
 		default:
 			httpLogErr(response, 404, "invalid url " + request.url);
@@ -57,16 +57,14 @@ function onHttpRequest(request, response) {
 			break;
 		case "/running":
 			request.on("data", function onData(data) {
-				if (data == "true") {
-					onStartStopTraffic(true);
-				} else if (data == "false") {
-					onStartStopTraffic(false);
-				} else {
-					httpLogErr(response, 400, "invalid request body " + data);
-					return;
+				try {
+					var msg = JSON.parse(data);
+					onStartStopTraffic(msg.running);
+					response.setHeader("Content-Type", "application/json");
+					response.end(JSON.stringify({ running: state.trafficRunning }));
+				} catch (e) {
+					httpLogErr(response, 400, e + ": invalid request body " + data);
 				}
-				response.setHeader("Content-Type", "text/plain");
-				response.end(state.trafficRunning.toString());
 			});
 			break;
 		default:
@@ -326,6 +324,8 @@ function onStartStopTraffic(newTrafficState) {
 	case false:
 		stopTraffic();
 		break;
+	default:
+		throw new Error("undefined traffic state");
 	}
 }
 
