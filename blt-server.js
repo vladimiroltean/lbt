@@ -99,7 +99,8 @@ function httpLogErr(response, statusCode, text) {
 /* this == f->clientConn */
 function onIperfClientConnReady() {
 	var flow = this.backlink;
-	var iperfCmd = "iperf3 -J -p " + flow.port + " -c " + flow.destination.split("@")[1];
+	var iperfCmd = "iperf3 -t 86400 -p " + flow.port + " -c " + flow.destination.split("@")[1];
+	/* Run for 24 hours */
 
 	console.log("iperf Client for %s :: conn ready", flow.label);
 	this.exec(iperfCmd, { pty: true }, (err, stream) => {
