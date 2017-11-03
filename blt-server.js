@@ -22,7 +22,7 @@ function onHttpRequest(request, response) {
 			break;
 		case "/running":
 			response.setHeader("Content-Type", "application/json");
-			response.end(JSON.stringify({ running: state.trafficRunning }));
+			response.end(JSON.stringify({ running: state.running }));
 			break;
 		default:
 			httpLogErr(response, 404, "invalid url " + request.url);
@@ -34,7 +34,7 @@ function onHttpRequest(request, response) {
 		switch (request.url) {
 		/* Only REST method calls */
 		case "/flows":
-			if (state.trafficRunning == true) {
+			if (state.running == true) {
 				httpLogErr(response, 405, "Flow configuration changes are not alloed while traffic is running");
 				break;
 			}
@@ -61,7 +61,7 @@ function onHttpRequest(request, response) {
 					var msg = JSON.parse(data);
 					onStartStopTraffic(msg.running);
 					response.setHeader("Content-Type", "application/json");
-					response.end(JSON.stringify({ running: state.trafficRunning }));
+					response.end(JSON.stringify({ running: state.running }));
 				} catch (e) {
 					httpLogErr(response, 400, e + ": invalid request body " + data);
 				}
@@ -284,7 +284,7 @@ function startTraffic() {
 	};
 	startIperfTraffic(enabledFlows.iperfFlows);
 	startPingTraffic(enabledFlows.pingFlows);
-	state.trafficRunning = true;
+	state.running = true;
 	state.clients = [];
 }
 
@@ -307,12 +307,12 @@ function stopTraffic() {
 		stream.close();
 	});
 	state.clients = [];
-	state.trafficRunning = false;
+	state.running = false;
 }
 
 function onStartStopTraffic(newTrafficState) {
-	console.log("traffic start/stop: old state " + state.trafficRunning + ", new state " + newTrafficState);
-	if (newTrafficState == state.trafficRunning) {
+	console.log("traffic start/stop: old state " + state.running + ", new state " + newTrafficState);
+	if (newTrafficState == state.running) {
 		/* This can happen when server restarted, but client
 		 * has stale information about its state. */
 		return;
@@ -372,7 +372,7 @@ function readPlaintextFromFile(filename, exitOnFail) {
 
 /*
  * state = {
- *     trafficRunning: boolean,
+ *     running: boolean,
  *     iperfFlows: [
  *         source: "user@host",
  *         destination: "user@host",
@@ -397,16 +397,16 @@ function readPlaintextFromFile(filename, exitOnFail) {
 
 /* We create a new state object from the given flowsString
  * interpreted as JSON.
- * state.trafficRunning always gets initialized as false, because
+ * state.running always gets initialized as false, because
  * it is not semantically correct anyway to call this function
- * while trafficRunning == true.
+ * while running == true.
  */
 function createNewState(flowsString, onSuccess, onFail) {
 	var state;
 	var flows;
 	try {
 		flows = JSON.parse(flowsString);
-		state = { trafficRunning: false, iperfFlows: flows.iperfFlows, pingFlows: flows.pingFlows };
+		state = { running: false, iperfFlows: flows.iperfFlows, pingFlows: flows.pingFlows };
 		onSuccess(state);
 	} catch (e) {
 		console.log(e.name + ": " + e.message);
@@ -468,7 +468,7 @@ createNewState(readPlaintextFromFile("flows.json", false),
 	},
 	function onFail() {
 		console.log("initializing with empty iperf and ping flows array");
-		state = { trafficRunning: false, iperfFlows: [], pingFlows: [] };
+		state = { running: false, iperfFlows: [], pingFlows: [] };
 	}
 );
 state.clients = [];
