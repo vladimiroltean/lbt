@@ -62,33 +62,33 @@ function addFlow() {
 		/* TODO: check case where there is no parent node element of type "table" */
 	}
 	switch (parentTable.id) {
-		case "iperf-table":
-			serverState.flows.iperf.push({
-				source: "n/a",
-				destination: "n/a",
-				port: "n/a",
-				transport: "n/a",
-				bandwidth: "n/a",
-				label: "n/a",
-				enabled: false
-			});
-			displayServerState();
-			break;
-		case "ping-table":
-			serverState.flows.ping.push({
-				source: "n/a",
-				destination: "n/a",
-				intervalType: "n/a",
-				intervalMS: "n/a",
-				packetSize: "n/a",
-				label: "n/a",
-				enabled: false
-			});
-			displayServerState();
-			break;
-		default:
-			window.alert("Invalid selection!");
-			return;
+	case "iperf-table":
+		serverState.flows.iperf.push({
+			source: "n/a",
+			destination: "n/a",
+			port: "n/a",
+			transport: "n/a",
+			bandwidth: "n/a",
+			label: "n/a",
+			enabled: false
+		});
+		displayServerState();
+		break;
+	case "ping-table":
+		serverState.flows.ping.push({
+			source: "n/a",
+			destination: "n/a",
+			intervalType: "n/a",
+			intervalMS: "n/a",
+			packetSize: "n/a",
+			label: "n/a",
+			enabled: false
+		});
+		displayServerState();
+		break;
+	default:
+		window.alert("Invalid selection!");
+		return;
 	}
 	btnSave.disabled = false;
 }
@@ -127,61 +127,56 @@ function removeFlow() {
 }
 
 function displayServerState() {
-	var iperfTable = document.getElementById("iperf-table").getElementsByTagName('tbody')[0];;
-	var  pingTable = document.getElementById("ping-table").getElementsByTagName('tbody')[0];;
+	var iperfTable = document.getElementById("iperf-table").getElementsByTagName('tbody')[0];
+	var  pingTable = document.getElementById("ping-table").getElementsByTagName('tbody')[0];
 	var   editable = serverState.running ? "" : "contenteditable";
 
 	iperfTable.innerHTML = "";
-	for (i = 0; i < serverState.flows.iperf.length; i++) {
-		var flow = serverState.flows.iperf[i];
+	serverState.flows.iperf.forEach((f) => {
 		var newRow = iperfTable.insertRow(iperfTable.rows.length);
 		/* we use the "editable" class to put input event listeners,
 		 * and the other classes to easily discern in the common
 		 * listener which field was changed */
 		newRow.innerHTML =
-			"<td><input type=\"checkbox\" class=\"editable iperf-enabled\"" +
-				(flow.enabled ? " checked" : "") + (serverState.running ? " disabled" : "") + "></td>" +
-			"<td " + editable + " class=\"editable iperf-label\">" + flow.label + "</td>" +
-			"<td " + editable + " class=\"editable iperf-source\">" + flow.source + "</td>" +
-			"<td " + editable + " class=\"editable iperf-destination\">" + flow.destination + "</td>" +
-			"<td " + editable + " class=\"editable iperf-port\">" + flow.port + "</td>" +
-			"<td " + editable + " class=\"editable iperf-transport\">" + flow.transport + "</td>" +
-			"<td " + editable + " class=\"editable iperf-bandwidth\">" + flow.bandwidth + "</td>" +
-			"<td><button type=\"button\" class=\"btnRemove\">-</button></td>"
+			'<td><input type="checkbox" class="editable iperf-enabled"' +
+			(f.enabled ? ' checked' : '') + (serverState.running ? ' disabled' : '') + '></td>' +
+			'<td ' + editable + ' class="editable iperf-label">' + f.label + '</td>' +
+			'<td ' + editable + ' class="editable iperf-source">' + f.source + '</td>' +
+			'<td ' + editable + ' class="editable iperf-destination">' + f.destination + '</td>' +
+			'<td ' + editable + ' class="editable iperf-port">' + f.port + '</td>' +
+			'<td ' + editable + ' class="editable iperf-transport">' + f.transport + '</td>' +
+			'<td ' + editable + ' class="editable iperf-bandwidth">' + f.bandwidth + '</td>' +
+			'<td><button type=\"button\" class=\"btnRemove\">-</button></td>'
 			;
-	}
+	});
 	pingTable.innerHTML = "";
-	for (i = 0; i < serverState.flows.ping.length; i++) {
-		var flow = serverState.flows.ping[i];
+	serverState.flows.ping.forEach((f) => {
 		var newRow = pingTable.insertRow(pingTable.rows.length);
 		newRow.innerHTML =
-			"<td><input type=\"checkbox\" class=\"editable ping-enabled\"" +
-				(flow.enabled ? " checked" : "") + (serverState.running ? " disabled" : "") + "></td>" +
-			"<td " + editable + " class=\"editable ping-label\">" + flow.label + "</td>" +
-			"<td " + editable + " class=\"editable ping-source\">" + flow.source + "</td>" +
-			"<td " + editable + " class=\"editable ping-destination\">" + flow.destination + "</td>" +
-			"<td " + editable + " class=\"editable ping-interval-type\">" + flow.intervalType + "</td>" +
-			"<td " + editable + " class=\"editable ping-interval-ms\">" + flow.intervalMS + "</td>" +
-			"<td " + editable + " class=\"editable ping-packet-size\">" + flow.packetSize + "</td>" +
-			"<td><button type=\"button\" class=\"btnRemove\">-</button></td>"
+			'<td><input type="checkbox" class="editable ping-enabled"' +
+			(f.enabled ? ' checked' : '') + (serverState.running ? ' disabled' : '') + '></td>' +
+			'<td ' + editable + ' class="editable ping-label">' + f.label + '</td>' +
+			'<td ' + editable + ' class="editable ping-source">' + f.source + '</td>' +
+			'<td ' + editable + ' class="editable ping-destination">' + f.destination + '</td>' +
+			'<td ' + editable + ' class="editable ping-interval-type">' + f.intervalType + '</td>' +
+			'<td ' + editable + ' class="editable ping-interval-ms">' + f.intervalMS + '</td>' +
+			'<td ' + editable + ' class="editable ping-packet-size">' + f.packetSize + '</td>' +
+			'<td><button type="button" class="btnRemove">-</button></td>'
 			;
-	}
+	});
 	/* Put listeners again on DOM objects */
-	var btnsAdd = document.getElementsByClassName("btnAdd");
-	for (i = 0; i < btnsAdd.length; i++) {
-		btnsAdd[i].onclick = addFlow;
-		btnsAdd[i].disabled = serverState.running;
-	}
-	var btnsRemove = document.getElementsByClassName("btnRemove");
-	for (i = 0; i < btnsRemove.length; i++) {
-		btnsRemove[i].onclick = removeFlow;
-		btnsRemove[i].disabled = serverState.running;
-	}
-	var editables = document.getElementsByClassName("editable");
-	for (i = 0; i < editables.length; i++) {
-		editables[i].oninput = changeFlow;
-		editables[i].disabled = serverState.running;
-	}
+	[].forEach.call(document.getElementsByClassName("btnAdd"), (btnAdd) => {
+		btnAdd.onclick = addFlow;
+		btnAdd.disabled = serverState.running;
+	});
+	[].forEach.call(document.getElementsByClassName("btnRemove"), (btnRemove) => {
+		btnRemove.onclick = removeFlow;
+		btnRemove.disabled = serverState.running;
+	});
+	[].forEach.call(document.getElementsByClassName("editable"), (editable) => {
+		editable.oninput = changeFlow;
+		editable.disabled = serverState.running;
+	});
 	btnStartStop.innerHTML = (serverState.running) ? "Stop traffic" : "Start traffic";
 }
 
