@@ -35,7 +35,8 @@ function onHttpRequest(request, response) {
 		/* Only REST method calls */
 		case "/flows":
 			if (state.running == true) {
-				httpLogErr(response, 405, "Flow configuration changes are not alloed while traffic is running");
+				httpLogErr(response, 405,
+				           "Flow config changes not allowed while traffic is running");
 				break;
 			}
 			request.on("data", function onData(data) {
