@@ -258,7 +258,8 @@ function initSSE() {
 		console.log("sse :: connection opened");
 	};
 	sseStream.onerror = function (event) {
-		window.alert("sse :: connection error: " + event);
+		console.log("sse :: connection error");
+		console.log(event);
 		sseStream.close();
 		refresh();
 	};
