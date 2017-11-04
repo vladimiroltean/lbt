@@ -107,62 +107,60 @@ function httpLogErr(response, statusCode, text) {
 	response.end(text);
 }
 
-/* this == f->clientConn */
+/* Method of objects from the state.flows.iperf array */
 function onIperfClientConnReady() {
-	var flow = this.backlink;
-	var iperfCmd = "iperf3 -t 86400 -p " + flow.port + " -c " + flow.destination.split("@")[1];
+	var iperfCmd = "iperf3 -t 86400 -p " + this.port + " -c " + this.destination.split("@")[1];
 	/* Run for 24 hours */
 
-	console.log("iperf Client for %s :: conn ready", flow.label);
-	this.exec(iperfCmd, { pty: true }, (err, stream) => {
+	console.log("iperf Client for %s :: conn ready", this.label);
+	this.clientConn.exec(iperfCmd, { pty: true }, (err, stream) => {
 		if (err) throw err;
 		stream.on("close", (code, signal) => {
-			console.log("iperf Client for %s :: close :: code: %s, signal: %s", flow.label, code, signal);
-			this.end();
+			console.log("iperf Client for %s :: close :: code: %s, signal: %s", this.label, code, signal);
+			this.clientConn.end();
 			stopTraffic();
 		});
 		stream.on("data", (data) => {
-			console.log("%s Client STDOUT: %s", flow.label, data);
+			console.log("%s Client STDOUT: %s", this.label, data);
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("%s Client STDERR: %s", flow.label, data);
+			console.log("%s Client STDERR: %s", this.label, data);
 		});
 	});
 }
 
-/* this == f->serverConn */
+/* Method of objects from the state.flows.iperf array */
 function onIperfServerConnReady() {
-	var flow = this.backlink;
-	var iperfCmd = "iperf3 -1 -f m -i 0.5 -s -p " + flow.port;
+	var iperfCmd = "iperf3 -1 -f m -i 0.5 -s -p " + this.port;
 
-	console.log("iperf Server for %s :: conn ready", flow.label);
-	this.exec(iperfCmd, { pty: true }, (err, stream) => {
+	console.log("iperf Server for %s :: conn ready", this.label);
+	this.serverConn.exec(iperfCmd, { pty: true }, (err, stream) => {
 		if (err) throw err;
 		stream.on("close", (code, signal) => {
-			console.log("iperf Server for %s :: close :: code: %s, signal: %s", flow.label, code, signal);
-			this.end();
+			console.log("iperf Server for %s :: close :: code: %s, signal: %s", this.label, code, signal);
+			this.serverConn.end();
 			stopTraffic();
 		});
 		stream.on("data", (data) => {
-			if (data.includes("Server listening on " + flow.port)) {
+			if (data.includes("Server listening on " + this.port)) {
 				/* iPerf Server managed to start up.
 				 * Time to connect to iPerf client and start
 				 * that up as well.
 				 */
-				flow.clientConn.connect(flow.clientConn.config);
+				this.clientConn.connect(this.clientConn.config);
 			} else if (data.includes("Mbits/sec")) {
 				var arr = data.toString().trim().split(/\ +/);
 				var bw = arr[arr.indexOf("Mbits/sec") - 1];
 				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
-				flow.data[time] = bw;
+				this.data[time] = bw;
 				/* Plot an extra iperf point */
-				state.iperfPlotter.stdin.write(time + " " + flow.id + " " + bw + "\n");
+				state.iperfPlotter.stdin.write(time + " " + this.id + " " + bw + "\n");
 			} else {
-				console.log("%s Server STDOUT: %s", flow.label, data);
+				console.log("%s Server STDOUT: %s", this.label, data);
 			}
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("%s Server STDERR: %s", flow.label, data);
+			console.log("%s Server STDERR: %s", this.label, data);
 		});
 	});
 }
@@ -212,8 +210,7 @@ function startIperfTraffic(iperfFlows) {
 		var dstArr = f.destination.split("@");
 
 		f.clientConn = new sshClient();
-		f.clientConn.backlink = f;
-		f.clientConn.on("ready", onIperfClientConnReady);
+		f.clientConn.on("ready", () => onIperfClientConnReady.call(f));
 		f.clientConn.on("error", (e) => {
 			console.log("SSH connection error: " + e);
 			stopTraffic();
@@ -227,8 +224,7 @@ function startIperfTraffic(iperfFlows) {
 		/* f.clientConn does not connect now */
 
 		f.serverConn = new sshClient();
-		f.serverConn.backlink = f;
-		f.serverConn.on("ready", onIperfServerConnReady);
+		f.serverConn.on("ready", () => onIperfServerConnReady.call(f));
 		f.serverConn.on("error", (e) => {
 			console.log("SSH connection error: " + e);
 			stopTraffic();
@@ -259,7 +255,6 @@ function startPingTraffic(pingFlows) {
 		var srcArr = f.source.split("@");
 
 		f.clientConn = new sshClient();
-		f.clientConn.backlink = f;
 		f.clientConn.on("ready", onPingClientConnReady);
 		f.clientConn.on("error", (e) => {
 			console.log("SSH connection error: " + e);
