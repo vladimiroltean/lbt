@@ -167,22 +167,21 @@ function onIperfServerConnReady() {
 	});
 }
 
-function onGnuplotData(data, flowType) {
-	var plotter = (flowType == "iperf") ? state.iperfPlotter :
-	              (flowType == "ping") ? state.pingPlotter :
-	              undefined;
+/* method of state.iperfPlotter and state.pingPlotter */
+function onGnuplotData(data) {
+	console.log(data.toString());
 	if (data.toString().includes("</svg>")) {
 		/* New SVG can be reassembled. */
 		var halves = data.toString().split("</svg>");
-		plotter.svg += halves[0] + "</svg>";
+		this.svg += halves[0] + "</svg>";
 		/* Send it to the SSE clients */
 		state.clients.forEach((stream) => {
-			stream.send(flowType, JSON.stringify({ svg: plotter.svg }));
+			stream.send(flowType, JSON.stringify({ svg: this.svg }));
 		});
 		/* Re-initialize the svg with the remainder */
-		plotter.svg = halves[1];
+		this.svg = halves[1];
 	} else {
-		plotter.svg += data;
+		this.svg += data;
 	}
 }
 
@@ -244,7 +243,7 @@ function startIperfTraffic(iperfFlows) {
 		f.data = {};
 	});
 	var plotter = spawn("feedgnuplot", iperfParams);
-	plotter.stdout.on("data", (data) => onGnuplotData(data, "iperf"));
+	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, data));
 	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 	});
