@@ -166,8 +166,7 @@ function onIperfServerConnReady() {
 }
 
 /* method of state.iperfPlotter and state.pingPlotter */
-function onGnuplotData(data) {
-	console.log(data.toString());
+function onGnuplotData(flowType, data) {
 	if (data.toString().includes("</svg>")) {
 		/* New SVG can be reassembled. */
 		var halves = data.toString().split("</svg>");
@@ -239,7 +238,7 @@ function startIperfTraffic(iperfFlows) {
 		f.data = {};
 	});
 	var plotter = spawn("feedgnuplot", iperfParams);
-	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, data));
+	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, "iperf", data));
 	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 	});
