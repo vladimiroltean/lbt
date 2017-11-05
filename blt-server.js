@@ -191,8 +191,6 @@ function startIperfTraffic(iperfFlows) {
 		"--lines",
 		"--ymin", 0,
 		//"--ymax", 1000,
-		"--autolegend",
-		/* XXX @host1 */
 		/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
 		"--xlen", "30",
 		"--xlabel", "Time (seconds)",
