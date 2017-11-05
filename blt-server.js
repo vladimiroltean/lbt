@@ -56,13 +56,6 @@ function onHttpRequest(request, response) {
 				createNewState(data)
 				.then((newState) => {
 					state = newState;
-					/* Append unique identifiers to each flow
-					 * (to be distinguished by gnuplot) */
-					["iperf", "ping"].forEach((type) => {
-						state.flows[type].forEach((f) => {
-							f.id = uuidv4();
-						});
-					});
 					/* Send flows back to client, as
 					 * part of confirmation */
 					var flowsString = curateStateForSend(state);
@@ -399,6 +392,7 @@ function readPlaintextFromFile(filename, exitOnFail) {
  *     flows: {
  *         iperf: [
  *             {
+ *                 id: [uuidv4],
  *                 source: "user@host",
  *                 destination: "user@host",
  *                 port: integer,
@@ -411,6 +405,7 @@ function readPlaintextFromFile(filename, exitOnFail) {
  *         ],
  *         ping: [
  *             {
+ *                 id: [uuidv4],
  *                 source: "user@host",
  *                 destination: "user@host",
  *                 intervalType: "periodic|adaptive|flood",
@@ -434,7 +429,14 @@ function createNewState(flowsString) {
 	return new Promise((resolve, reject) => {
 		try {
 			var newFlows = JSON.parse(flowsString);
-			console.log(newFlows);
+			/* Append unique identifiers to each flow
+			 * (to be distinguished by gnuplot) */
+			["iperf", "ping"].forEach((type) => {
+				newFlows.flows[type].forEach((f) => {
+					f.id = uuidv4();
+				});
+			});
+			console.log(JSON.stringify(newFlows));
 			resolve({
 				running: false,
 				clients: [],
