@@ -107,17 +107,23 @@ function onIperfClientConnReady() {
 
 	console.log("iperf Client for %s :: conn ready", this.label);
 	this.clientConn.exec(iperfCmd, { pty: true }, (err, stream) => {
-		if (err) throw err;
+		if (err) {
+			console.log(err);
+			this.clientConn.end();
+			stopTraffic();
+			return;
+		}
 		stream.on("close", (code, signal) => {
 			console.log("iperf Client for %s :: close :: code: %s, signal: %s", this.label, code, signal);
 			this.clientConn.end();
-			stopTraffic();
 		});
 		stream.on("data", (data) => {
 			console.log("%s Client STDOUT: %s", this.label, data);
 		});
 		stream.stderr.on("data", (data) => {
 			console.log("%s Client STDERR: %s", this.label, data);
+			this.clientConn.end();
+			stopTraffic();
 		});
 	});
 }
@@ -128,10 +134,14 @@ function onIperfServerConnReady() {
 
 	console.log("iperf Server for %s :: conn ready", this.label);
 	this.serverConn.exec(iperfCmd, { pty: true }, (err, stream) => {
-		if (err) throw err;
+		if (err) {
+			console.log(err);
+			this.serverConn.end();
+			stopTraffic();
+			return;
+		}
 		stream.on("close", (code, signal) => {
 			console.log("iperf Server for %s :: close :: code: %s, signal: %s", this.label, code, signal);
-			this.serverConn.end();
 			stopTraffic();
 		});
 		stream.on("data", (data) => {
@@ -154,6 +164,8 @@ function onIperfServerConnReady() {
 		});
 		stream.stderr.on("data", (data) => {
 			console.log("%s Server STDERR: %s", this.label, data);
+			this.serverConn.end();
+			stopTraffic();
 		});
 	});
 }
@@ -165,10 +177,14 @@ function onPingClientConnReady() {
 	console.log("ping Client for %s :: conn ready", this.label);
 	this.startTime = Date.now();
 	this.clientConn.exec(pingCmd, { pty: true }, (err, stream) => {
-		if (err) throw err;
+		if (err) {
+			console.log(err);
+			this.clientConn.end();
+			stopTraffic();
+			return;
+		}
 		stream.on("close", (code, signal) => {
 			console.log("%s Ping Client :: close :: code: %s, signal: %s", this.label, code, signal);
-			this.clientConn.end();
 			stopTraffic();
 		});
 		stream.on("data", (data) => {
@@ -184,9 +200,10 @@ function onPingClientConnReady() {
 		});
 		stream.stderr.on("data", (data) => {
 			console.log("%s Ping Server STDERR: %s", this.label, data);
+			this.clientConn.end();
+			stopTraffic();
 		});
 	});
-
 }
 
 /* method of state.iperfPlotter and state.pingPlotter */
@@ -263,6 +280,7 @@ function startIperfTraffic(iperfFlows) {
 	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, "iperf", data));
 	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
+		stopTraffic();
 	});
 	plotter.on("exit", (code) => {
 		console.log("feedgnuplot process exited with code %s", code);
@@ -314,9 +332,12 @@ function startPingTraffic(pingFlows) {
 	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, "ping", data));
 	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
+		plotter.stdin.end();
+		stopTraffic();
 	});
 	plotter.on("exit", (code) => {
 		console.log("feedgnuplot process exited with code %s", code);
+		stopTraffic();
 	});
 	plotter.svg = "";
 	state.pingPlotter = plotter;
