@@ -158,6 +158,37 @@ function onIperfServerConnReady() {
 	});
 }
 
+/* Method of objects from the state.flows.ping array */
+function onPingClientConnReady() {
+	var pingCmd = "ping -A " + this.destination.split("@")[1];
+
+	console.log("ping Client for %s :: conn ready", this.label);
+	this.startTime = Date.now();
+	this.clientConn.exec(pingCmd, { pty: true }, (err, stream) => {
+		if (err) throw err;
+		stream.on("close", (code, signal) => {
+			console.log("%s Ping Client :: close :: code: %s, signal: %s", this.label, code, signal);
+			this.clientConn.end();
+			stopTraffic();
+		});
+		stream.on("data", (data) => {
+			if (data.includes("ms")) {
+				var words = data.toString().trim().split(/\ +/);
+				var rtt = words[words.indexOf("ms") - 1].split("=")[1];
+				var time = (Date.now() - this.startTime) / 1000;
+				/* Plot an extra ping point */
+				state.pingPlotter.stdin.write(time + " " + this.id + " " + rtt + "\n");
+			} else {
+				console.log("%s Ping Client STDOUT: %s", this.label, data);
+			}
+		});
+		stream.stderr.on("data", (data) => {
+			console.log("%s Ping Server STDERR: %s", this.label, data);
+		});
+	});
+
+}
+
 /* method of state.iperfPlotter and state.pingPlotter */
 function onGnuplotData(flowType, data) {
 	if (data.toString().includes("</svg>")) {
@@ -241,11 +272,30 @@ function startIperfTraffic(iperfFlows) {
 }
 
 function startPingTraffic(pingFlows) {
+	var pingParams = [
+		"--stream", "0.5",
+		"--domain",
+		"--dataid",
+		"--exit",
+		"--lines",
+		"--xmin", "0",
+		//"--xmax", "50",
+		"--xlen", "30",
+		"--ymin", "0",
+		"--xlabel", "RTT (ms)",
+		"--ylabel", "Packets",
+		"--title", "Ping Round Trip Time",
+		"--binwidth", "0.2",
+		"--terminal", "svg"
+	];
 	pingFlows.forEach((f) => {
+		pingParams.push("--legend", f.id, f.label);
+		pingParams.push("--histogram", f.id);
+
 		var srcArr = f.source.split("@");
 
 		f.clientConn = new sshClient();
-		f.clientConn.on("ready", onPingClientConnReady);
+		f.clientConn.on("ready", () => onPingClientConnReady.call(f));
 		f.clientConn.on("error", (e) => {
 			console.log("SSH connection error: " + e);
 			stopTraffic();
@@ -259,35 +309,17 @@ function startPingTraffic(pingFlows) {
 		f.clientConn.connect(f.clientConn.config);
 		f.data = {};
 	});
-	var pingParams = [
-		"--stream", "0.5",
-		"--domain",
-		"--dataid",
-		"--exit",
-		"--lines",
-		"--ymin", 0,
-		"--ymax", 1000,
-		"--autolegend",
-		/* XXX @host1 */
-		"--style", "host1", 'linewidth 2 linecolor rgb "blue"',
-		"--style", "host2", 'linewidth 2 linecolor rgb "green"',
-		/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
-		"--xlen", "30",
-		"--xlabel", "Time",
-		"--ylabel", "Bandwidth",
-		"--title", "Peanut butter",
-		"--terminal", "svg"
-	];
-	return;
-	state.iperfPlotter = spawn("feedgnuplot", iperfParams);
-	state.iperfPlotter.stdout.on("data", (data) => onGnuplotData(data, "iperf"));
-	state.iperfPlotter.stderr.on("data", (data) => {
+
+	var plotter = spawn("feedgnuplot", pingParams);
+	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, "ping", data));
+	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 	});
-	state.iperfPlotter.on("exit", (code) => {
+	plotter.on("exit", (code) => {
 		console.log("feedgnuplot process exited with code %s", code);
 	});
-	state.iperfPlotter.svg = "";
+	plotter.svg = "";
+	state.pingPlotter = plotter;
 }
 
 function startTraffic() {

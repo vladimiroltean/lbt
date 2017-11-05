@@ -36,7 +36,7 @@ function changeFlow(e) {
 	} else if (classes.contains("ping-source")) {
 		serverState.flows.ping[index].source = text;
 	} else if (classes.contains("ping-destination")) {
-		serverState.flows.ping[index].source = text;
+		serverState.flows.ping[index].destination = text;
 	} else if (classes.contains("ping-interval-type")) {
 		serverState.flows.ping[index].intervalType = text;
 	} else if (classes.contains("ping-interval-ms")) {
@@ -244,6 +244,7 @@ function initSSE() {
 		console.log("sse stream message: " + event.data);
 	};
 	sseStream.addEventListener("iperf", onSSEEvent);
+	sseStream.addEventListener("ping", onSSEEvent);
 	/* Close the connection when the window is closed */
 	window.addEventListener("beforeunload", closeSSE);
 }
