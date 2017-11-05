@@ -8,7 +8,7 @@ var url = require("url");
 var port = 8000;
 var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
-var spawn = require("child_process").spawn;
+var { spawn, execSync } = require("child_process");
 var uuidv4 = require('uuid/v4');
 var sse;
 var state;
@@ -477,6 +477,30 @@ function curateStateForSend(state) {
 		});
 	});
 	return JSON.stringify({ flows: newFlows });
+}
+
+function checkVersion(cmd, where, requiredMajor, requiredMinor) {
+	try {
+		var version = execSync(cmd).toString().split(" ")[where];
+		var major, minor;
+		[major, minor] = version.split(".").map(Number);
+		return (major > requiredMajor ||
+		       (major == requiredMajor && minor >= requiredMinor));
+	} catch (e) {
+		console.log(e);
+		return false;
+	}
+}
+
+if (!checkVersion("gnuplot --version", 1, 5, 2)) {
+	/* Sample stdout: "gnuplot 5.2 patchlevel 0" */
+	console.log("Please ensure a minimum version of gnuplot 5.2 is available.");
+	process.exit();
+}
+if (!checkVersion("feedgnuplot --version", 2, 1, 45)) {
+	/* Sample stdout: "feedgnuplot version 1.45" */
+	console.log("Please ensure a minimum version of feedgnuplot 1.45 is available.");
+	process.exit();
 }
 
 process.on("SIGHUP",  onExit);
