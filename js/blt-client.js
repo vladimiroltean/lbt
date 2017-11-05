@@ -283,16 +283,18 @@ function refresh() {
 	.catch((reason) => { console.log(reason); });
 };
 
-window.onload = refresh;
-btnSave.onclick = function() {
-	xchgServerState("PUT", "/flows", { flows: serverState.flows })
-	.then((state) => { onServerStateChanged({flows: state.flows}); })
-	.catch((reason) => { console.log(reason); });
-};
-btnStartStop.onclick = function() {
-	xchgServerState("PUT", "/running", {
-		running: !serverState.running
-	})
-	.then((state) => { onServerStateChanged({ running: state.running }); })
-	.catch((reason) => { console.log(reason); });
-};
+window.onload = () => {
+	refresh();
+	btnSave.onclick = () => {
+		xchgServerState("PUT", "/flows", { flows: serverState.flows })
+		.then((state) => { onServerStateChanged({flows: state.flows}); })
+		.catch((reason) => { console.log(reason); });
+	};
+	btnStartStop.onclick = () => {
+		xchgServerState("PUT", "/running", {
+			running: !serverState.running
+		})
+		.then((state) => { onServerStateChanged({ running: state.running }); })
+		.catch((reason) => { console.log(reason); });
+	};
+}
