@@ -241,7 +241,7 @@ function startIperfTraffic(iperfFlows) {
 	];
 
 	iperfFlows.forEach((f) => {
-		iperfParams.push("--style", f.id, 'linewidth 2 linecolor rgb "blue"');
+		iperfParams.push("--style", f.id, 'linewidth 2');
 		iperfParams.push("--legend", f.id, f.label);
 
 		var srcArr = f.source.split("@");
