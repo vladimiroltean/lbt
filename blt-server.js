@@ -56,9 +56,9 @@ function onHttpRequest(request, response) {
 				createNewState(data)
 				.then((newState) => {
 					state = newState;
+					var flowsString = curateStateForSend(state);
 					/* Send flows back to client, as
 					 * part of confirmation */
-					var flowsString = curateStateForSend(state);
 					response.setHeader("Content-Type", "application/json");
 					response.end(flowsString);
 					fs.writeFile("flows.json", flowsString, function onWrite() {
