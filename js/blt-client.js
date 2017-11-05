@@ -11,171 +11,163 @@ var serverState = {
 
 /* Type of e is InputEvent.
  * Type of e.target is HTMLTableCellElement. */
-function changeFlow(e) {
-	var parentRow = e.target;
-	var text = e.target.innerText.trim();
-	while (parentRow.nodeName.toLowerCase() != "tr") {
-		parentRow = parentRow.parentElement;
-	}
-	var classes = e.target.classList;
-	var index = parentRow.rowIndex - 1;
-	if (classes.contains("iperf-source")) {
-		serverState.flows.iperf[index].source = text;
-	} else if (classes.contains("iperf-destination")) {
-		serverState.flows.iperf[index].destination = text;
-	} else if (classes.contains("iperf-port")) {
-		serverState.flows.iperf[index].port = text;
-	} else if (classes.contains("iperf-transport")) {
-		serverState.flows.iperf[index].transport = text;
-	} else if (classes.contains("iperf-bandwidth")) {
-		serverState.flows.iperf[index].bandwidth = text;
-	} else if (classes.contains("iperf-label")) {
-		serverState.flows.iperf[index].label = text;
-	} else if (classes.contains("iperf-enabled")) {
-		serverState.flows.iperf[index].enabled = e.target.checked;
-	} else if (classes.contains("ping-source")) {
-		serverState.flows.ping[index].source = text;
-	} else if (classes.contains("ping-destination")) {
-		serverState.flows.ping[index].destination = text;
-	} else if (classes.contains("ping-interval-type")) {
-		serverState.flows.ping[index].intervalType = text;
-	} else if (classes.contains("ping-interval-ms")) {
-		serverState.flows.ping[index].intervalMS = text;
-	} else if (classes.contains("ping-packet-size")) {
-		serverState.flows.ping[index].packetSize = text;
-	} else if (classes.contains("ping-label")) {
-		serverState.flows.ping[index].label = text;
-	} else if (classes.contains("ping-enabled")) {
-		serverState.flows.ping[index].enabled = e.target.checked;
+function changeFlow(classes, text) {
+	if (classes.contains("source")) {
+		this.source = text;
+	} else if (classes.contains("destination")) {
+		this.destination = text;
+	} else if (classes.contains("port")) {
+		this.port = text;
+	} else if (classes.contains("transport")) {
+		this.transport = text;
+	} else if (classes.contains("bandwidth")) {
+		this.bandwidth = text;
+	} else if (classes.contains("label")) {
+		this.label = text;
+	} else if (classes.contains("flow-enabled")) {
+		this.enabled = text;
+	} else if (classes.contains("interval-type")) {
+		this.intervalType = text;
+	} else if (classes.contains("interval-ms")) {
+		this.intervalMS = text;
+	} else if (classes.contains("packet-size")) {
+		this.packetSize = text;
 	} else {
-		window.alert("unrecognized change operation: row " + index +
-		             ", text " + text + ", class list " + classes);
+		console.log("changeFlow failed: classes %s, text %s",
+		            classes, text);
 		return;
 	}
-	btnSave.disabled = false;
 }
 
-function addFlow() {
-	var parentTable = this;
-	while (parentTable.nodeName.toLowerCase() != "table") {
-		parentTable = parentTable.parentElement;
-		/* TODO: check case where there is no parent node element of type "table" */
-	}
-	switch (parentTable.id) {
-	case "iperf-table":
-		serverState.flows.iperf.push({
-			source: "n/a",
-			destination: "n/a",
+function addFlow(flowType) {
+	switch (flowType) {
+	case "iperf":
+		this.push({
+			source: "user@hostname:port",
+			destination: "user@hostname:port",
 			port: "n/a",
-			transport: "n/a",
+			transport: "tcp",
 			bandwidth: "n/a",
 			label: "n/a",
 			enabled: false
 		});
-		displayServerState();
 		break;
-	case "ping-table":
-		serverState.flows.ping.push({
-			source: "n/a",
-			destination: "n/a",
-			intervalType: "n/a",
+	case "ping":
+		this.push({
+			source: "user@hostname:port",
+			destination: "user@hostname:port",
+			intervalType: "adaptive",
 			intervalMS: "n/a",
 			packetSize: "n/a",
 			label: "n/a",
 			enabled: false
 		});
-		displayServerState();
 		break;
 	default:
-		window.alert("Invalid selection!");
+		console.log("Invalid selection " + flowType);
 		return;
 	}
-	btnSave.disabled = false;
 }
 
-function removeFlow() {
-	var parentTable = this;
-	while (parentTable.nodeName.toLowerCase() != "table") {
-		parentTable = parentTable.parentElement;
-		/* TODO: check case where there is no parent node element of type "table" */
-	}
-	var parentRow = this;
-	while (parentRow.nodeName.toLowerCase() != "tr") {
-		parentRow = parentRow.parentElement;
-	}
-	var indexToRemove = parentRow.rowIndex - 1;
-	var flows;
-	switch (parentTable.id) {
-		case "iperf-table":
-			flows = serverState.flows.iperf;
-			break;
-		case "ping-table":
-			flows = serverState.flows.ping;
-			break;
-		default:
-			window.alert("Invalid selection!");
-			return;
-	}
-	if (indexToRemove < 0 || indexToRemove >= flows.length) {
+function removeFlow(indexToRemove) {
+	if (indexToRemove < 0 || indexToRemove >= this.length) {
 		window.alert("cannot remove index " + indexToRemove +
 		             " from flow array");
 		return;
 	}
-	flows.splice(indexToRemove, 1);
-	displayServerState();
-	btnSave.disabled = false;
+	this.splice(indexToRemove, 1);
+}
+
+function populateRow(flowType, flow) {
+	var inputEditable = serverState.running ? "" : "contenteditable";
+	var inputDisabled = serverState.running ? ' disabled' : '';
+
+	/* we use the "editable|checkbox|dropdown" class to put input event listeners,
+	 * and the other classes to easily discern in the common
+	 * listener which field was changed */
+	var flowEnabled = '<td> <input type="checkbox" class="checkbox flow-enabled"' +
+		(flow.enabled ? ' checked' : '') + inputDisabled + '></td>';
+	var label = '<td ' + inputEditable + ' class="editable label">' + flow.label + '</td>';
+	var source = '<td ' + inputEditable + ' class="editable source">' + flow.source + '</td>';
+	var destination = '<td ' + inputEditable + ' class="editable destination">' + flow.destination + '</td>';
+	var btnRemove = '<td> <button type="button" ' + inputDisabled + ' class="btnRemove">-</button> </td>';
+	switch (flowType) {
+	case "iperf":
+		var port = '<td ' + inputEditable + ' class="editable port">' + flow.port + '</td>';
+		var transport = '<td>' +
+			'<select ' + inputDisabled + ' class="dropdown transport">' +
+			'<option value="udp" ' + ((flow.transport == "udp") ? "selected" : "") + '>UDP</option>' +
+			'<option value="tcp" ' + ((flow.transport == "tcp") ? "selected" : "") + '>TCP</option>' +
+			'</select>' +
+			'</td>';
+		var bandwidth = '<td ' + inputEditable + ' class="editable bandwidth">' + flow.bandwidth + '</td>';
+		this.innerHTML = flowEnabled + label + source + destination + port + transport + bandwidth + btnRemove;
+		break;
+	case "ping":
+		var intervalType = '<td>' +
+			'<select ' + inputDisabled + ' class="dropdown interval-type">' +
+			'<option value="periodic" ' + ((flow.intervalType == "periodic") ? "selected" : "") + '>Periodic</option>' +
+			'<option value="adaptive" ' + ((flow.intervalType == "adaptive") ? "selected" : "") + '>Adaptive</option>' +
+			'<option value="flood" '    + ((flow.intervalType == "flood") ? "selected" : "") + '>Flood</option>' +
+			'</select>' +
+			'</td>';
+		var intervalMS = '<td ' + inputEditable + ' class="editable interval-ms">' + flow.intervalMS + '</td>';
+		var packetSize = '<td ' + inputEditable + ' class="editable packet-size">' + flow.packetSize + '</td>';
+		this.innerHTML = flowEnabled + label + source + destination + intervalType + intervalMS + packetSize + btnRemove;
+		break;
+	default:
+		console.log("populateRow: invalid flow type " + flowType);
+	}
 }
 
 function displayServerState() {
-	var iperfTable = document.getElementById("iperf-table").getElementsByTagName('tbody')[0];
-	var  pingTable = document.getElementById("ping-table").getElementsByTagName('tbody')[0];
-	var   editable = serverState.running ? "" : "contenteditable";
+	["iperf", "ping"].forEach((flowType) => {
+		var table = document.getElementById(flowType + "-table");
+		var tbody = table.getElementsByTagName('tbody')[0];
+		var flows = (flowType == "iperf") ? serverState.flows.iperf : serverState.flows.ping;
 
-	iperfTable.innerHTML = "";
-	serverState.flows.iperf.forEach((f) => {
-		var newRow = iperfTable.insertRow(iperfTable.rows.length);
-		/* we use the "editable" class to put input event listeners,
-		 * and the other classes to easily discern in the common
-		 * listener which field was changed */
-		newRow.innerHTML =
-			'<td><input type="checkbox" class="editable iperf-enabled"' +
-			(f.enabled ? ' checked' : '') + (serverState.running ? ' disabled' : '') + '></td>' +
-			'<td ' + editable + ' class="editable iperf-label">' + f.label + '</td>' +
-			'<td ' + editable + ' class="editable iperf-source">' + f.source + '</td>' +
-			'<td ' + editable + ' class="editable iperf-destination">' + f.destination + '</td>' +
-			'<td ' + editable + ' class="editable iperf-port">' + f.port + '</td>' +
-			'<td ' + editable + ' class="editable iperf-transport">' + f.transport + '</td>' +
-			'<td ' + editable + ' class="editable iperf-bandwidth">' + f.bandwidth + '</td>' +
-			'<td><button type=\"button\" class=\"btnRemove\">-</button></td>'
-			;
-	});
-	pingTable.innerHTML = "";
-	serverState.flows.ping.forEach((f) => {
-		var newRow = pingTable.insertRow(pingTable.rows.length);
-		newRow.innerHTML =
-			'<td><input type="checkbox" class="editable ping-enabled"' +
-			(f.enabled ? ' checked' : '') + (serverState.running ? ' disabled' : '') + '></td>' +
-			'<td ' + editable + ' class="editable ping-label">' + f.label + '</td>' +
-			'<td ' + editable + ' class="editable ping-source">' + f.source + '</td>' +
-			'<td ' + editable + ' class="editable ping-destination">' + f.destination + '</td>' +
-			'<td ' + editable + ' class="editable ping-interval-type">' + f.intervalType + '</td>' +
-			'<td ' + editable + ' class="editable ping-interval-ms">' + f.intervalMS + '</td>' +
-			'<td ' + editable + ' class="editable ping-packet-size">' + f.packetSize + '</td>' +
-			'<td><button type="button" class="btnRemove">-</button></td>'
-			;
-	});
-	/* Put listeners again on DOM objects */
-	[].forEach.call(document.getElementsByClassName("btnAdd"), (btnAdd) => {
-		btnAdd.onclick = addFlow;
-		btnAdd.disabled = serverState.running;
-	});
-	[].forEach.call(document.getElementsByClassName("btnRemove"), (btnRemove) => {
-		btnRemove.onclick = removeFlow;
-		btnRemove.disabled = serverState.running;
-	});
-	[].forEach.call(document.getElementsByClassName("editable"), (editable) => {
-		editable.oninput = changeFlow;
-		editable.disabled = serverState.running;
+		tbody.innerHTML = "";
+		flows.forEach((f) => {
+			var newRow = tbody.insertRow(tbody.rows.length);
+			populateRow.call(newRow, flowType, f);
+		});
+		/* Put listeners again on DOM objects */
+		[].forEach.call(table.getElementsByClassName("btnAdd"), (btnAdd) => {
+			btnAdd.onclick = () => {
+				addFlow.call(flows, flowType);
+				displayServerState();
+				btnSave.disabled = false;
+			}
+			btnAdd.disabled = serverState.running;
+		});
+		[].forEach.call(table.getElementsByClassName("btnRemove"), (btnRemove) => {
+			btnRemove.onclick = () => {
+				var parentRow = this;
+				while (parentRow.nodeName.toLowerCase() != "tr") {
+					parentRow = parentRow.parentElement;
+				}
+				removeFlow.call(flows, parentRow.rowIndex - 1);
+				displayServerState();
+				btnSave.disabled = false;
+			};
+		});
+		["editable", "dropdown", "checkbox"].forEach((cellType) => {
+			[].forEach.call(table.getElementsByClassName(cellType), (cell) => {
+				cell.oninput = (event) => {
+					var classes = event.target.classList;
+					var text = cellType == "checkbox" ? event.target.checked :
+				           	   cellType == "dropdown" ? event.target.value :
+				           	   event.target.innerText.trim();
+					var parentRow = event.target;
+					while (parentRow.nodeName.toLowerCase() != "tr") {
+						parentRow = parentRow.parentElement;
+					}
+					var index = parentRow.rowIndex - 1;
+					changeFlow.call(flows[index], classes, text);
+					btnSave.disabled = false;
+				}
+			});
+		});
 	});
 	btnStartStop.innerHTML = (serverState.running) ? "Stop traffic" : "Start traffic";
 }
