@@ -189,18 +189,10 @@ function xchgServerState(requestType, path, toSend) {
 function onSSEEvent(event) {
 	try {
 		var msg = JSON.parse(event.data);
-		var dom_node;
-		switch (event.type) {
-		case "iperf":
-			dom_node = document.getElementById("iperf-gnuplot");
-			break;
-		case "ping":
-			dom_node = document.getElementById("ping-gnuplot");
-			break;
-		default:
+		if (!["iperf", "ping"].includes(event.type)) {
 			throw new Error("invalid event type " + event.type);
 		}
-		dom_node.innerHTML = msg.svg;
+		document.getElementById(event.type + "-gnuplot").innerHTML = msg.svg;
 	} catch (e) {
 		console.log(e.stack);
 		window.alert(e.name + ' while parsing event "' + event.data +
