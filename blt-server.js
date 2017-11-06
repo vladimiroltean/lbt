@@ -538,7 +538,7 @@ function curateStateForSend(state) {
 			label: f.label
 		});
 	});
-	return JSON.stringify({ flows: newFlows });
+	return JSON.stringify({ flows: newFlows }, null, "\t");
 }
 
 function checkVersion(cmd, where, requiredMajor, requiredMinor) {
