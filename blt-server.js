@@ -155,7 +155,7 @@ function onIperfServerConnReady() {
 				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 				this.data[time] = bw;
 				/* Plot an extra iperf point */
-				state.iperfPlotter.stdin.write(time + " " + this.id + " " + bw + "\n");
+				state.plotter.iperf.stdin.write(time + " " + this.id + " " + bw + "\n");
 			} else {
 				console.log("%s Server STDOUT: %s", this.label, data);
 			}
@@ -191,7 +191,7 @@ function onPingClientConnReady() {
 				var rtt = words[words.indexOf("ms") - 1].split("=")[1];
 				var time = (Date.now() - this.startTime) / 1000;
 				/* Plot an extra ping point */
-				state.pingPlotter.stdin.write(time + " " + this.id + " " + rtt + "\n");
+				state.plotter.ping.stdin.write(time + " " + this.id + " " + rtt + "\n");
 			} else {
 				console.log("%s Ping Client STDOUT: %s", this.label, data);
 			}
@@ -204,7 +204,7 @@ function onPingClientConnReady() {
 	});
 }
 
-/* method of state.iperfPlotter and state.pingPlotter */
+/* method of state.plotter.iperf and state.plotter.ping */
 function onGnuplotData(flowType, data) {
 	if (data.toString().includes("</svg>")) {
 		/* New SVG can be reassembled. */
@@ -284,7 +284,7 @@ function startIperfTraffic(iperfFlows) {
 		console.log("feedgnuplot process exited with code %s", code);
 	});
 	plotter.svg = "";
-	state.iperfPlotter = plotter;
+	state.plotter.iperf = plotter;
 }
 
 function startPingTraffic(pingFlows) {
@@ -339,7 +339,7 @@ function startPingTraffic(pingFlows) {
 		stopTraffic();
 	});
 	plotter.svg = "";
-	state.pingPlotter = plotter;
+	state.plotter.ping = plotter;
 }
 
 function startTraffic() {
@@ -363,13 +363,13 @@ function stopTraffic() {
 			if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
 			if (typeof(f.serverConn) != "undefined") { f.serverConn.end() };
 		});
-		state.iperfPlotter.stdin.end();
+		state.plotter.iperf.stdin.end();
 	}
 	if (enabledFlows.ping.length) {
 		enabledFlows.ping.forEach((f) => {
 			if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
 		});
-		state.pingPlotter.stdin.end();
+		state.plotter.ping.stdin.end();
 	}
 	state.clients.forEach((stream) => {
 		stream.close();
@@ -442,8 +442,10 @@ function readPlaintextFromFile(filename, exitOnFail) {
  * state = {
  *     running: boolean,
  *     clients: [Client],
- *     iperfPlotter: ChildProcess,
- *     pingPlotter: ChildProcess,
+ *     plotter: {
+ *         iperf: ChildProcess,
+ *         ping: ChildProcess
+ *     },
  *     flows: {
  *         iperf: [
  *             {
@@ -494,6 +496,7 @@ function createNewState(flowsString) {
 	return {
 		running: false,
 		clients: [],
+		plotter: { ping: {}, iperf: {} },
 		flows: newFlows.flows
 	};
 }
@@ -567,12 +570,8 @@ try {
 	state = {
 		running: false,
 		clients: [],
-		iperfPlotter: {},
-		pingPlotter: {},
-		flows: {
-			iperf: [],
-			ping: []
-		}
+		plotter: { iperf: {}, ping: {} },
+		flows: { iperf: [], ping: [] }
 	};
 };
 
