@@ -104,7 +104,9 @@ function onSourceSSHConnReady(flowType) {
 
 	if (flowType == "iperf") {
 		/* Run for 24 hours */
-		cmd = "iperf3 -t 86400 -p " + this.port + " -c " + this.destination.hostname;
+		cmd = "iperf3 -t 86400 -p " + this.port +
+		      ((this.transport == "udp") ? " -u -b " + this.bandwidth + "M " : " ") +
+		       " -c " + this.destination.hostname;
 	} else {
 		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
 		                 (this.intervalType == "flood") ? "-f " :
