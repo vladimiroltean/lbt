@@ -102,7 +102,7 @@ function httpLogErr(response, statusCode, text) {
 
 /* Method of objects from the state.flows.iperf array */
 function onIperfClientConnReady() {
-	var iperfCmd = "iperf3 -t 86400 -p " + this.port + " -c " + this.destination.split("@")[1];
+	var iperfCmd = "iperf3 -t 86400 -p " + this.port + " -c " + this.destination.hostname;
 	/* Run for 24 hours */
 
 	console.log("iperf Client for %s :: conn ready", this.label);
@@ -172,7 +172,7 @@ function onIperfServerConnReady() {
 
 /* Method of objects from the state.flows.ping array */
 function onPingClientConnReady() {
-	var pingCmd = "ping -A " + this.destination.split("@")[1];
+	var pingCmd = "ping -A " + this.destination.hostname;
 
 	console.log("ping Client for %s :: conn ready", this.label);
 	this.startTime = Date.now();
@@ -247,9 +247,6 @@ function startIperfTraffic(iperfFlows) {
 		iperfParams.push("--style", f.id, 'linewidth 2');
 		iperfParams.push("--legend", f.id, f.label);
 
-		var srcArr = f.source.split("@");
-		var dstArr = f.destination.split("@");
-
 		f.clientConn = new sshClient();
 		f.clientConn.on("ready", () => onIperfClientConnReady.call(f));
 		f.clientConn.on("error", (e) => {
@@ -257,9 +254,9 @@ function startIperfTraffic(iperfFlows) {
 			stopTraffic();
 		});
 		f.clientConn.config = {
-			username: srcArr[0],
-			host: srcArr[1],
-			port: 22,
+			username: f.source.user,
+			host: f.source.hostname,
+			port: f.source.port,
 			privateKey: fs.readFileSync(".ssh/id_rsa")
 		};
 		/* f.clientConn does not connect now */
@@ -271,9 +268,9 @@ function startIperfTraffic(iperfFlows) {
 			stopTraffic();
 		});
 		f.serverConn.config = {
-			username: dstArr[0],
-			host: dstArr[1],
-			port: 22,
+			username: f.destination.user,
+			host: f.destination.hostname,
+			port: f.destination.port,
 			privateKey: fs.readFileSync(".ssh/id_rsa")
 		};
 		f.serverConn.connect(f.serverConn.config);
@@ -316,8 +313,6 @@ function startPingTraffic(pingFlows) {
 		pingParams.push("--legend", f.id, f.label);
 		pingParams.push("--histogram", f.id);
 
-		var srcArr = f.source.split("@");
-
 		f.clientConn = new sshClient();
 		f.clientConn.on("ready", () => onPingClientConnReady.call(f));
 		f.clientConn.on("error", (e) => {
@@ -325,9 +320,9 @@ function startPingTraffic(pingFlows) {
 			stopTraffic();
 		});
 		f.clientConn.config = {
-			username: srcArr[0],
-			host: srcArr[1],
-			port: 22,
+			username: f.source.user,
+			host: f.source.hostname,
+			port: f.source.port,
 			privateKey: fs.readFileSync(".ssh/id_rsa")
 		};
 		f.clientConn.connect(f.clientConn.config);
