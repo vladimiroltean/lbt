@@ -8,9 +8,9 @@ var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var { spawn, execSync } = require("child_process");
 var uuidv4 = require('uuid/v4');
+var config = JSON.parse(readPlaintextFromFile("config.json", true));
 var sse;
 var state;
-var config = JSON.parse(readPlaintextFromFile("config.json"));
 
 function onHttpRequest(request, response) {
 	switch (request.method) {
