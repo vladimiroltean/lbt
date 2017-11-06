@@ -99,106 +99,110 @@ function httpLogErr(response, statusCode, text) {
 }
 
 /* Method of objects from the state.flows.iperf array */
-function onIperfClientConnReady() {
-	var iperfCmd = "iperf3 -t 86400 -p " + this.port + " -c " + this.destination.hostname;
-	/* Run for 24 hours */
+function onSourceSSHConnReady(flowType) {
+	var cmd;
 
-	console.log("iperf Client for %s :: conn ready", this.label);
-	this.clientConn.exec(iperfCmd, { pty: true }, (err, stream) => {
+	if (flowType == "iperf") {
+		/* Run for 24 hours */
+		cmd = "iperf3 -t 86400 -p " + this.port + " -c " + this.destination.hostname;
+	} else {
+		cmd = "ping -A " + this.destination.hostname;
+	}
+
+	this.startTime = Date.now();
+	console.log("%s %s Client :: conn ready", this.label, flowType);
+	this.srcSSHConn.exec(cmd, { pty: true }, (err, stream) => {
 		if (err) {
 			console.log(err);
-			this.clientConn.end();
+			this.srcSSHConn.end();
 			stopTraffic();
 			return;
 		}
 		stream.on("close", (code, signal) => {
-			console.log("iperf Client for %s :: close :: code: %s, signal: %s", this.label, code, signal);
-			this.clientConn.end();
+			console.log("%s %s Source :: close :: code: %s, signal: %s",
+			            this.label, flowType, code, signal);
+			this.srcSSHConn.end();
 		});
 		stream.on("data", (data) => {
-			console.log("%s Client STDOUT: %s", this.label, data);
+			if (flowType == "ping") {
+				stream.on("data", (data) => {
+					if (data.includes("ms")) {
+						var words = data.toString().trim().split(/\ +/);
+						var rtt = words[words.indexOf("ms") - 1].split("=")[1];
+						var time = (Date.now() - this.startTime) / 1000;
+						/* Plot an extra ping point */
+						state.plotter.ping.stdin.write(time + " " + this.id + " " + rtt + "\n");
+					} else {
+						console.log("%s %s Source STDOUT: %s",
+						            this.label, flowType, data);
+					}
+				});
+			} else {
+				/* iPerf3 reports are taken at destination */
+				console.log("%s %s Source :: STDOUT: %s",
+				            this.label, flowType, data);
+			}
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("%s Client STDERR: %s", this.label, data);
-			this.clientConn.end();
+			console.log("%s %s Source :: STDERR: %s",
+			            this.label, flowType, data);
+			this.srcSSHConn.end();
 			stopTraffic();
 		});
 	});
 }
 
 /* Method of objects from the state.flows.iperf array */
-function onIperfServerConnReady() {
-	var iperfCmd = "iperf3 -1 -f m -i 0.5 -s -p " + this.port;
+function onDestinationSSHConnReady(flowType) {
+	var cmd;
 
-	console.log("iperf Server for %s :: conn ready", this.label);
-	this.serverConn.exec(iperfCmd, { pty: true }, (err, stream) => {
+	if (flowType == "iperf") {
+		cmd = "iperf3 -1 -f m -i 0.5 -s -p " + this.port;
+	}
+	/* Nothing happens with ping on destination side (at the moment) */
+
+	console.log("%s %s Destination :: conn ready", this.label, flowType);
+	this.dstSSHConn.exec(cmd, { pty: true }, (err, stream) => {
 		if (err) {
 			console.log(err);
-			this.serverConn.end();
+			this.dstSSHConn.end();
 			stopTraffic();
 			return;
 		}
 		stream.on("close", (code, signal) => {
-			console.log("iperf Server for %s :: close :: code: %s, signal: %s", this.label, code, signal);
+			console.log("%s %s Destination :: close :: code: %s, signal: %s",
+			            this.label, flowType, code, signal);
 			stopTraffic();
 		});
 		stream.on("data", (data) => {
-			if (data.includes("Server listening on " + this.port)) {
-				/* iPerf Server managed to start up.
-				 * Time to connect to iPerf client and start
-				 * that up as well.
-				 */
-				this.clientConn.connect(this.clientConn.config);
-			} else if (data.includes("Mbits/sec")) {
-				var arr = data.toString().trim().split(/\ +/);
-				var bw = arr[arr.indexOf("Mbits/sec") - 1];
-				var time = arr[arr.indexOf("sec") - 1].split("-")[0];
-				this.data[time] = bw;
-				/* Plot an extra iperf point */
-				state.plotter.iperf.stdin.write(time + " " + this.id + " " + bw + "\n");
+			if (flowType == "iperf") {
+				if (data.includes("Server listening on " + this.port)) {
+					/* iPerf Server managed to start up.
+					 * Time to connect to iPerf client and start
+					 * that up as well.
+					 */
+					this.srcSSHConn.connect(this.srcSSHConn.config);
+				} else if (data.includes("Mbits/sec")) {
+					var arr = data.toString().trim().split(/\ +/);
+					var bw = arr[arr.indexOf("Mbits/sec") - 1];
+					var time = arr[arr.indexOf("sec") - 1].split("-")[0];
+					this.data[time] = bw;
+					/* Plot an extra iperf point */
+					state.plotter[flowType].stdin.write(time + " " + this.id + " " + bw + "\n");
+				} else {
+					console.log("%s %s Destination STDOUT: %s",
+					            this.label, flowType, data);
+				}
 			} else {
-				console.log("%s Server STDOUT: %s", this.label, data);
+				/* Ping. Data is gathered in the source connection */
+				console.log("%s %s Destination :: STDOUT: %s",
+				            this.label, flowType, data);
 			}
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("%s Server STDERR: %s", this.label, data);
-			this.serverConn.end();
-			stopTraffic();
-		});
-	});
-}
-
-/* Method of objects from the state.flows.ping array */
-function onPingClientConnReady() {
-	var pingCmd = "ping -A " + this.destination.hostname;
-
-	console.log("ping Client for %s :: conn ready", this.label);
-	this.startTime = Date.now();
-	this.clientConn.exec(pingCmd, { pty: true }, (err, stream) => {
-		if (err) {
-			console.log(err);
-			this.clientConn.end();
-			stopTraffic();
-			return;
-		}
-		stream.on("close", (code, signal) => {
-			console.log("%s Ping Client :: close :: code: %s, signal: %s", this.label, code, signal);
-			stopTraffic();
-		});
-		stream.on("data", (data) => {
-			if (data.includes("ms")) {
-				var words = data.toString().trim().split(/\ +/);
-				var rtt = words[words.indexOf("ms") - 1].split("=")[1];
-				var time = (Date.now() - this.startTime) / 1000;
-				/* Plot an extra ping point */
-				state.plotter.ping.stdin.write(time + " " + this.id + " " + rtt + "\n");
-			} else {
-				console.log("%s Ping Client STDOUT: %s", this.label, data);
-			}
-		});
-		stream.stderr.on("data", (data) => {
-			console.log("%s Ping Server STDERR: %s", this.label, data);
-			this.clientConn.end();
+			console.log("%s %s Destination :: STDERR: %s",
+			            this.label, flowType, data);
+			this.dstSSHConn.end();
 			stopTraffic();
 		});
 	});
@@ -221,61 +225,95 @@ function onGnuplotData(flowType, data) {
 	}
 }
 
-function startIperfTraffic(iperfFlows) {
+function startFlows(flows, flowType) {
+	if (!flows.length) { return; }
 
-	if (!iperfFlows.length) { return; }
+	var feedgnuplotParams;
+	
+	if (flowType == "iperf") {
+		feedgnuplotParams = [
+			"--stream", "0.5",
+			"--domain",
+			"--dataid",
+			"--exit",
+			"--lines",
+			"--ymin", 0,
+			//"--ymax", 1000,
+			/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
+			"--xlen", "30",
+			"--xlabel", "Time (seconds)",
+			"--ylabel", "Bandwidth (Mbps)",
+			"--title", "iPerf3 Bandwidth",
+			"--terminal", "svg"
+		];
+	} else {
+		feedgnuplotParams = [
+			"--stream", "0.5",
+			"--domain",
+			"--dataid",
+			"--exit",
+			"--lines",
+			"--xmin", "0",
+			//"--xmax", "50",
+			"--xlen", "30",
+			"--ymin", "0",
+			"--xlabel", "RTT (ms)",
+			"--ylabel", "Packets",
+			"--title", "Ping Round Trip Time",
+			"--binwidth", "0.2",
+			"--terminal", "svg"
+		];
+	}
 
-	var iperfParams = [
-		"--stream", "0.5",
-		"--domain",
-		"--dataid",
-		"--exit",
-		"--lines",
-		"--ymin", 0,
-		//"--ymax", 1000,
-		/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
-		"--xlen", "30",
-		"--xlabel", "Time (seconds)",
-		"--ylabel", "Bandwidth (Mbps)",
-		"--title", "iPerf3 Bandwidth",
-		"--terminal", "svg"
-	];
+	flows.forEach((f) => {
+		if (flowType == "iperf") {
+			feedgnuplotParams.push("--style", f.id, 'linewidth 2');
+			feedgnuplotParams.push("--legend", f.id, f.label);
+		} else {
+			feedgnuplotParams.push("--legend", f.id, f.label);
+			feedgnuplotParams.push("--histogram", f.id);
+		}
 
-	iperfFlows.forEach((f) => {
-		iperfParams.push("--style", f.id, 'linewidth 2');
-		iperfParams.push("--legend", f.id, f.label);
-
-		f.clientConn = new sshClient();
-		f.clientConn.on("ready", () => onIperfClientConnReady.call(f));
-		f.clientConn.on("error", (e) => {
+		f.srcSSHConn = new sshClient();
+		f.srcSSHConn.on("ready", () => onSourceSSHConnReady.call(f, flowType));
+		f.srcSSHConn.on("error", (e) => {
 			console.log("SSH connection error: " + e);
 			stopTraffic();
 		});
-		f.clientConn.config = {
+		f.srcSSHConn.config = {
 			username: f.source.user,
 			host: f.source.hostname,
 			port: f.source.port,
 			privateKey: fs.readFileSync(".ssh/id_rsa")
 		};
-		/* f.clientConn does not connect now */
-
-		f.serverConn = new sshClient();
-		f.serverConn.on("ready", () => onIperfServerConnReady.call(f));
-		f.serverConn.on("error", (e) => {
-			console.log("SSH connection error: " + e);
-			stopTraffic();
-		});
-		f.serverConn.config = {
-			username: f.destination.user,
-			host: f.destination.hostname,
-			port: f.destination.port,
-			privateKey: fs.readFileSync(".ssh/id_rsa")
-		};
-		f.serverConn.connect(f.serverConn.config);
+		if (flowType == "ping") {
+			/* Ping traffic is initiated through the
+			 * SSH connection to source.
+			 */
+			f.srcSSHConn.connect(f.srcSSHConn.config);
+		} else if (flowType == "iperf") {
+			/* iPerf traffic is initiated through the
+			 * source SSH connection as well, but an iPerf
+			 * server must first be started on the destination.
+			 */
+			f.dstSSHConn = new sshClient();
+			f.dstSSHConn.on("ready", () => onDestinationSSHConnReady.call(f, flowType));
+			f.dstSSHConn.on("error", (e) => {
+				console.log("SSH connection error: " + e);
+				stopTraffic();
+			});
+			f.dstSSHConn.config = {
+				username: f.destination.user,
+				host: f.destination.hostname,
+				port: f.destination.port,
+				privateKey: fs.readFileSync(".ssh/id_rsa")
+			};
+			f.dstSSHConn.connect(f.dstSSHConn.config);
+		}
 		f.data = {};
 	});
-	var plotter = spawn("feedgnuplot", iperfParams);
-	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, "iperf", data));
+	var plotter = spawn("feedgnuplot", feedgnuplotParams);
+	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, flowType, data));
 	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 		stopTraffic();
@@ -284,98 +322,40 @@ function startIperfTraffic(iperfFlows) {
 		console.log("feedgnuplot process exited with code %s", code);
 	});
 	plotter.svg = "";
-	state.plotter.iperf = plotter;
-}
-
-function startPingTraffic(pingFlows) {
-
-	if (!pingFlows.length) { return; }
-
-	var pingParams = [
-		"--stream", "0.5",
-		"--domain",
-		"--dataid",
-		"--exit",
-		"--lines",
-		"--xmin", "0",
-		//"--xmax", "50",
-		"--xlen", "30",
-		"--ymin", "0",
-		"--xlabel", "RTT (ms)",
-		"--ylabel", "Packets",
-		"--title", "Ping Round Trip Time",
-		"--binwidth", "0.2",
-		"--terminal", "svg"
-	];
-	pingFlows.forEach((f) => {
-		pingParams.push("--legend", f.id, f.label);
-		pingParams.push("--histogram", f.id);
-
-		f.clientConn = new sshClient();
-		f.clientConn.on("ready", () => onPingClientConnReady.call(f));
-		f.clientConn.on("error", (e) => {
-			console.log("SSH connection error: " + e);
-			stopTraffic();
-		});
-		f.clientConn.config = {
-			username: f.source.user,
-			host: f.source.hostname,
-			port: f.source.port,
-			privateKey: fs.readFileSync(".ssh/id_rsa")
-		};
-		f.clientConn.connect(f.clientConn.config);
-		f.data = {};
-	});
-
-	var plotter = spawn("feedgnuplot", pingParams);
-	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, "ping", data));
-	plotter.stderr.on("data", (data) => {
-		console.log("feedgnuplot stderr: %s", data);
-		plotter.stdin.end();
-		stopTraffic();
-	});
-	plotter.on("exit", (code) => {
-		console.log("feedgnuplot process exited with code %s", code);
-		stopTraffic();
-	});
-	plotter.svg = "";
-	state.plotter.ping = plotter;
+	state.plotter[flowType] = plotter;
 }
 
 function startTraffic() {
-	var enabledFlows = {
-		iperf: state.flows.iperf.filter((e) => { return e.enabled }),
-		ping:  state.flows.ping.filter( (e) => { return e.enabled })
-	};
-	startIperfTraffic(enabledFlows.iperf);
-	startPingTraffic(enabledFlows.ping);
+	["iperf", "ping"].forEach((flowType) => {
+		var enabled = state.flows[flowType].filter((e) => { return e.enabled });
+		startFlows(enabled, flowType);
+	});
 	state.running = true;
 	state.clients = [];
 }
 
 function stopTraffic() {
-	var enabledFlows = {
-		iperf: state.flows.iperf.filter((e) => { return e.enabled }),
-		ping:  state.flows.ping.filter( (e) => { return e.enabled })
-	};
-	if (enabledFlows.iperf.length) {
-		enabledFlows.iperf.forEach((f) => {
-			if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
-			if (typeof(f.serverConn) != "undefined") { f.serverConn.end() };
-		});
-		state.plotter.iperf.stdin.end();
-	}
-	if (enabledFlows.ping.length) {
-		enabledFlows.ping.forEach((f) => {
-			if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
-		});
-		state.plotter.ping.stdin.end();
-	}
+	try {
+	["iperf", "ping"].forEach((flowType) => {
+		var enabled = state.flows[flowType].filter((e) => { return e.enabled });
+		if (enabled.length) {
+			enabled.forEach((f) => {
+				if (typeof(f.srcSSHConn) != "undefined") { f.srcSSHConn.end() };
+				if (typeof(f.dstSSHConn) != "undefined") { f.dstSSHConn.end() };
+			});
+			state.plotter[flowType].stdin.end();
+		}
+	});
 	state.clients.forEach((stream) => {
 		stream.close();
 	});
 	state.clients = [];
 	state.running = false;
+	} catch (e) {
+		console.log(e);
+		console.log(e.stack);
+		throw(e);
+	}
 }
 
 function onStartStopTraffic(newTrafficState) {
@@ -503,7 +483,7 @@ function createNewState(flowsString) {
 
 /* The reason we start creating this from scratch is that
  * we put a lot of extraneous stuff in the state, such as data,
- * plotter, clientConn, serverConn, that we don't want to leak
+ * plotter, srcSSHConn, dstSSHConn, that we don't want to leak
  */
 function curateStateForSend(state) {
 	var newFlows = { iperf: [], ping: [] };
