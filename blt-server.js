@@ -97,7 +97,7 @@ function httpLogErr(response, statusCode, text) {
 	response.end(text);
 }
 
-/* Method of objects from the state.flows.iperf array */
+/* Method of objects from the state.flows[flowType] arrays */
 function onSourceSSHConnReady(flowType) {
 	var cmd;
 
@@ -157,7 +157,7 @@ function onSourceSSHConnReady(flowType) {
 	});
 }
 
-/* Method of objects from the state.flows.iperf array */
+/* Method of objects from the state.flows[flowType] arrays */
 function onDestinationSSHConnReady(flowType) {
 	var cmd;
 
@@ -234,9 +234,7 @@ function onGnuplotData(flowType, data) {
 function startFlows(flows, flowType) {
 	if (!flows.length) { return; }
 
-	var feedgnuplotParams;
-	
-	feedgnuplotParams = [
+	var feedgnuplotParams = [
 		"--stream", "0.5",
 		"--domain", /* First column (time) is domain */
 		"--dataid", /* Second column (f.id) is dataid */
