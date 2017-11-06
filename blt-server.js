@@ -4,7 +4,6 @@ var fs = require("fs");
 var http = require("http");
 var sshClient = require("ssh2").Client;
 var server = http.createServer();
-var url = require("url");
 var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var { spawn, execSync } = require("child_process");
