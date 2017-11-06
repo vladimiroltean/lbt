@@ -53,9 +53,8 @@ function onHttpRequest(request, response) {
 				break;
 			}
 			request.on("data", function onData(data) {
-				createNewState(data)
-				.then((newState) => {
-					state = newState;
+				try {
+					state = createNewState(data);
 					var flowsString = curateStateForSend(state);
 					/* Send flows back to client, as
 					 * part of confirmation */
@@ -64,10 +63,9 @@ function onHttpRequest(request, response) {
 					fs.writeFile("flows.json", flowsString, function onWrite() {
 						console.log("Successfully written flows to file.");
 					});
-				})
-				.catch((reason) => {
+				} catch (reason) {
 					httpLogErr(response, 400, "cannot parse flows from " + data + ", reason: " + reason);
-				});
+				}
 			});
 			break;
 		case "/running":
@@ -481,28 +479,23 @@ function readPlaintextFromFile(filename, exitOnFail) {
  * state.running always gets initialized as false, because
  * it is not semantically correct anyway to call this function
  * while running == true.
+ * Warning: Throws exception!
  */
 function createNewState(flowsString) {
-	return new Promise((resolve, reject) => {
-		try {
-			var newFlows = JSON.parse(flowsString);
-			/* Append unique identifiers to each flow
-			 * (to be distinguished by gnuplot) */
-			["iperf", "ping"].forEach((type) => {
-				newFlows.flows[type].forEach((f) => {
-					f.id = uuidv4();
-				});
-			});
-			console.log(JSON.stringify(newFlows));
-			resolve({
-				running: false,
-				clients: [],
-				flows: newFlows.flows
-			});
-		} catch (e) {
-			reject(e);
-		}
+	var newFlows = JSON.parse(flowsString);
+	/* Append unique identifiers to each flow
+	 * (to be distinguished by gnuplot) */
+	["iperf", "ping"].forEach((type) => {
+		newFlows.flows[type].forEach((f) => {
+			f.id = uuidv4();
+		});
 	});
+	console.log(JSON.stringify(newFlows));
+	return {
+		running: false,
+		clients: [],
+		flows: newFlows.flows
+	};
 }
 
 /* The reason we start creating this from scratch is that
@@ -566,11 +559,9 @@ process.on("SIGTERM", onExit);
 process.on("SIGABRT", onExit);
 process.on("SIGQUIT", onExit);
 
-createNewState(readPlaintextFromFile("flows.json", false))
-.then((newState) => {
-	state = newState;
-})
-.catch((reason) => {
+try {
+	state = createNewState(readPlaintextFromFile("flows.json", false))
+} catch (reason) {
 	console.log(reason);
 	console.log("initializing with empty iperf and ping flows array");
 	state = {
@@ -583,7 +574,7 @@ createNewState(readPlaintextFromFile("flows.json", false))
 			ping: []
 		}
 	};
-});
+};
 
 server.on("request", onHttpRequest);
 server.on("error", onHttpServerError);
