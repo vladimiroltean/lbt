@@ -251,6 +251,9 @@ function startFlows(flows, flowType) {
 	if (config[flowType].xlabel) feedgnuplotParams.push("--xlabel", config[flowType].xlabel);
 	if (config[flowType].ylabel) feedgnuplotParams.push("--ylabel", config[flowType].ylabel);
 	if (config[flowType].title)  feedgnuplotParams.push("--title",  config[flowType].title);
+	if (config[flowType].plotStyle == "histogram" && config[flowType].binwidth) {
+		feedgnuplotParams.push("--binwidth",  config[flowType].binwidth);
+	}
 	/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
 
 	flows.forEach((f) => {
