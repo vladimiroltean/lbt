@@ -241,10 +241,10 @@ function startFlows(flows, flowType) {
 		"--dataid", /* Second column (f.id) is dataid */
 		"--exit",
 		"--lines",
-		"--xmin", 0,
-		"--ymin", 0,
 		"--terminal", "svg"
 	];
+	if (config[flowType].xmin)   feedgnuplotParams.push("--xmin",   config[flowType].xmin);
+	if (config[flowType].ymin)   feedgnuplotParams.push("--ymin",   config[flowType].ymin);
 	if (config[flowType].xmax)   feedgnuplotParams.push("--xmax",   config[flowType].xmax);
 	if (config[flowType].ymax)   feedgnuplotParams.push("--ymax",   config[flowType].ymax);
 	if (config[flowType].xlen)   feedgnuplotParams.push("--xlen",   config[flowType].xlen);
