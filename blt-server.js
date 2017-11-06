@@ -106,7 +106,10 @@ function onSourceSSHConnReady(flowType) {
 		/* Run for 24 hours */
 		cmd = "iperf3 -t 86400 -p " + this.port + " -c " + this.destination.hostname;
 	} else {
-		cmd = "ping -A " + this.destination.hostname;
+		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
+		                 (this.intervalType == "flood") ? "-f " :
+		                 "-i " + this.intervalMS) +
+		       " -s " + this.packetSize + " " + this.destination.hostname;
 	}
 
 	this.startTime = Date.now();
