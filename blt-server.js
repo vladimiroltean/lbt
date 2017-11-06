@@ -323,7 +323,6 @@ function startTraffic() {
 }
 
 function stopTraffic() {
-	try {
 	["iperf", "ping"].forEach((flowType) => {
 		var enabled = state.flows[flowType].filter((e) => { return e.enabled });
 		if (enabled.length) {
@@ -339,11 +338,6 @@ function stopTraffic() {
 	});
 	state.clients = [];
 	state.running = false;
-	} catch (e) {
-		console.log(e);
-		console.log(e.stack);
-		throw(e);
-	}
 }
 
 function onStartStopTraffic(newTrafficState) {
