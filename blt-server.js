@@ -224,6 +224,9 @@ function onGnuplotData(flowType, data) {
 }
 
 function startIperfTraffic(iperfFlows) {
+
+	if (!iperfFlows.length) { return; }
+
 	var iperfParams = [
 		"--stream", "0.5",
 		"--domain",
@@ -290,6 +293,9 @@ function startIperfTraffic(iperfFlows) {
 }
 
 function startPingTraffic(pingFlows) {
+
+	if (!pingFlows.length) { return; }
+
 	var pingParams = [
 		"--stream", "0.5",
 		"--domain",
@@ -359,16 +365,19 @@ function stopTraffic() {
 		iperf: state.flows.iperf.filter((e) => { return e.enabled }),
 		ping:  state.flows.ping.filter( (e) => { return e.enabled })
 	};
-	enabledFlows.iperf.forEach((f) => {
-		if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
-		if (typeof(f.serverConn) != "undefined") { f.serverConn.end() };
-	});
-	enabledFlows.ping.forEach((f) => {
-		if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
-	});
-	state.iperfPlotter.stdin.end();
-	/* XXX */
-	//state.pingPlotter.stdin.end();
+	if (enabledFlows.iperf.length) {
+		enabledFlows.iperf.forEach((f) => {
+			if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
+			if (typeof(f.serverConn) != "undefined") { f.serverConn.end() };
+		});
+		state.iperfPlotter.stdin.end();
+	}
+	if (enabledFlows.ping.length) {
+		enabledFlows.ping.forEach((f) => {
+			if (typeof(f.clientConn) != "undefined") { f.clientConn.end() };
+		});
+		state.pingPlotter.stdin.end();
+	}
 	state.clients.forEach((stream) => {
 		stream.close();
 	});
