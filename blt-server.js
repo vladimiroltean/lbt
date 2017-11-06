@@ -533,6 +533,7 @@ function curateStateForSend(state) {
 			destination: f.destination,
 			intervalType: f.intervalType,
 			intervalMS: f.intervalMS,
+			packetSize: f.packetSize,
 			enabled: f.enabled,
 			label: f.label
 		});

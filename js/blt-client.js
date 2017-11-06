@@ -13,9 +13,9 @@ var serverState = {
  * Type of e.target is HTMLTableCellElement. */
 function changeFlow(classes, text) {
 	if (classes.contains("source")) {
-		this.source = text;
+		this.sourceText = text;
 	} else if (classes.contains("destination")) {
-		this.destination = text;
+		this.destinationText = text;
 	} else if (classes.contains("port")) {
 		this.port = text;
 	} else if (classes.contains("transport")) {
@@ -43,8 +43,8 @@ function addFlow(flowType) {
 	switch (flowType) {
 	case "iperf":
 		this.push({
-			source: "user@hostname:port",
-			destination: "user@hostname:port",
+			sourceText: "user@hostname:port",
+			destinationText: "user@hostname:port",
 			port: "n/a",
 			transport: "tcp",
 			bandwidth: "n/a",
@@ -54,11 +54,11 @@ function addFlow(flowType) {
 		break;
 	case "ping":
 		this.push({
-			source: "user@hostname:port",
-			destination: "user@hostname:port",
+			sourceText: "user@hostname:port",
+			destinationText: "user@hostname:port",
 			intervalType: "adaptive",
 			intervalMS: "n/a",
-			packetSize: "n/a",
+			packetSize: "64",
 			label: "n/a",
 			enabled: false
 		});
@@ -88,8 +88,8 @@ function populateRow(flowType, flow) {
 	var flowEnabled = '<td> <input type="checkbox" class="checkbox flow-enabled"' +
 		(flow.enabled ? ' checked' : '') + inputDisabled + '></td>';
 	var label = '<td ' + inputEditable + ' class="editable label">' + flow.label + '</td>';
-	var source = '<td ' + inputEditable + ' class="editable source">' + flow.source + '</td>';
-	var destination = '<td ' + inputEditable + ' class="editable destination">' + flow.destination + '</td>';
+	var sourceText = '<td ' + inputEditable + ' class="editable source">' + flow.sourceText + '</td>';
+	var destinationText = '<td ' + inputEditable + ' class="editable destination">' + flow.destinationText + '</td>';
 	var btnRemove = '<td> <button type="button" ' + inputDisabled + ' class="btnRemove">-</button> </td>';
 	switch (flowType) {
 	case "iperf":
@@ -101,7 +101,7 @@ function populateRow(flowType, flow) {
 			'</select>' +
 			'</td>';
 		var bandwidth = '<td ' + inputEditable + ' class="editable bandwidth">' + flow.bandwidth + '</td>';
-		this.innerHTML = flowEnabled + label + source + destination + port + transport + bandwidth + btnRemove;
+		this.innerHTML = flowEnabled + label + sourceText + destinationText + port + transport + bandwidth + btnRemove;
 		break;
 	case "ping":
 		var intervalType = '<td>' +
@@ -113,7 +113,7 @@ function populateRow(flowType, flow) {
 			'</td>';
 		var intervalMS = '<td ' + inputEditable + ' class="editable interval-ms">' + flow.intervalMS + '</td>';
 		var packetSize = '<td ' + inputEditable + ' class="editable packet-size">' + flow.packetSize + '</td>';
-		this.innerHTML = flowEnabled + label + source + destination + intervalType + intervalMS + packetSize + btnRemove;
+		this.innerHTML = flowEnabled + label + sourceText + destinationText + intervalType + intervalMS + packetSize + btnRemove;
 		break;
 	default:
 		console.log("populateRow: invalid flow type " + flowType);
@@ -213,6 +213,7 @@ function onSSEEvent(event) {
 		}
 		dom_node.innerHTML = msg.svg;
 	} catch (e) {
+		console.log(e.stack);
 		window.alert(e.name + ' while parsing event "' + event.data +
 		             ' from server: ' + e.message);
 	}
@@ -275,20 +276,157 @@ function refresh() {
 		xchgServerState("GET", "/running")
 	])
 	.then((array) => {
-		onServerStateChanged({
-			flows: array[0].flows,
-			running: array[1].running
-		});
+		try {
+			onServerStateChanged({
+				flows: parseRecvFlows(array[0].flows),
+				running: array[1].running
+			});
+		} catch (e) {
+			console.log(e.stack);
+			alert("Error while processing flows from server: " + e);
+		};
 	})
 	.catch((reason) => { console.log(reason); });
 };
 
+function parseSentLoginData(string) {
+	var loginData = {
+		user: "",
+		hostname: "",
+		port: ""
+	};
+	var arr = string.split(":");
+	if (arr.length == 2) {
+		loginData.port = Number(arr[1]);
+	} else if (arr.length == 1) {
+		loginData.port = 22;
+	} else {
+		throw new Error("Invalid login format: " + string);
+	}
+	arr = arr[0].split("@");
+	if (arr.length == 2) {
+		loginData.user = arr[0];
+		loginData.hostname = arr[1];
+	} else if (arr.length == 1) {
+		loginData.user = "root";
+		loginData.hostname = arr[0];
+	} else {
+		throw new Error("Invalid login format: " + string);
+	}
+	return loginData;
+}
+
+function parseRecvLoginData(loginData) {
+	return (loginData.user || "root") + "@" + loginData.hostname + ":" + (loginData.port || "22");
+}
+
+function curateFlowsForSend(flows) {
+	var newFlows = { iperf: [], ping: [] };
+	flows.iperf.forEach((f) => {
+		if (!["tcp", "udp"].includes(f.transport)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid transport " + f.transport);
+		}
+		if (![true, false].includes(f.enabled)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid enabled state " + f.enabled);
+		}
+		if (f.transport == "udp" && isNaN(f.bandwidth)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid bandwidth limit " + f.bandwidth);
+		}
+		if (isNaN(f.port)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid port " + f.port);
+		}
+		newFlows.iperf.push({
+			source: parseSentLoginData(f.sourceText),
+			destination: parseSentLoginData(f.destinationText),
+			port: +f.port,
+			transport: f.transport,
+			bandwidth: (f.transport == "udp") ? +f.bandwidth : -1,
+			enabled: f.enabled,
+			label: f.label
+		});
+	});
+	flows.ping.forEach((f) => {
+		if (!["adaptive", "periodic", "flood"].includes(f.intervalType)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid interval type " + f.intervalType);
+		}
+		if (f.intervalType == "periodic" && isNaN(f.intervalMS)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid interval period " + f.intervalMS);
+		}
+		if (isNaN(f.packetSize)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid packet size " + f.packetSize);
+		}
+		newFlows.ping.push({
+			source: parseSentLoginData(f.sourceText),
+			destination: parseSentLoginData(f.destinationText),
+			intervalType: f.intervalType,
+			intervalMS: (f.intervalType == "periodic") ? +f.intervalMS : -1,
+			packetSize: f.packetSize,
+			enabled: f.enabled,
+			label: f.label
+		});
+	});
+	return newFlows;
+}
+
+function parseRecvFlows(flows) {
+	var newFlows = { iperf: [], ping: [] };
+	flows.iperf.forEach((f) => {
+		if (!["tcp", "udp"].includes(f.transport)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid transport " + f.transport);
+		}
+		if (![true, false].includes(f.enabled)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid enabled state " + f.enabled);
+		}
+		if (f.transport == "udp" && isNaN(f.bandwidth)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid bandwidth limit " + f.bandwidth);
+		}
+		if (isNaN(f.port)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid port " + f.port);
+		}
+		newFlows.iperf.push({
+			sourceText: parseRecvLoginData(f.source),
+			destinationText: parseRecvLoginData(f.destination),
+			port: +f.port,
+			transport: f.transport,
+			bandwidth: (f.transport == "udp") ? +f.bandwidth : "n/a",
+			enabled: f.enabled,
+			label: f.label
+		});
+	});
+	flows.ping.forEach((f) => {
+		if (!["adaptive", "periodic", "flood"].includes(f.intervalType)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid interval type " + f.intervalType);
+		}
+		if (f.intervalType == "periodic" && isNaN(f.intervalMS)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid interval period " + f.intervalMS);
+		}
+		if (isNaN(f.packetSize)) {
+			throw new Error("flow " + JSON.stringify(f) + ": invalid packet size " + f.packetSize);
+		}
+		newFlows.ping.push({
+			sourceText: parseRecvLoginData(f.source),
+			destinationText: parseRecvLoginData(f.destination),
+			intervalType: f.intervalType,
+			intervalMS: (f.intervalType == "periodic") ? +f.intervalMS : "n/a",
+			packetSize: f.packetSize,
+			enabled: f.enabled,
+			label: f.label
+		});
+	});
+	return newFlows;
+}
+
 window.onload = () => {
 	refresh();
 	btnSave.onclick = () => {
-		xchgServerState("PUT", "/flows", { flows: serverState.flows })
-		.then((state) => { onServerStateChanged({flows: state.flows}); })
-		.catch((reason) => { console.log(reason); });
+		try {
+			xchgServerState("PUT", "/flows", { flows: curateFlowsForSend(serverState.flows) })
+			.then((recvState) => { onServerStateChanged({ flows: parseRecvFlows(recvState.flows)}) })
+			.catch((reason) => { console.log(reason); });
+		} catch(e) {
+			console.log(e.stack);
+			alert("Invalid flow configuration: " + e);
+		};
 	};
 	btnStartStop.onclick = () => {
 		xchgServerState("PUT", "/running", {
