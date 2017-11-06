@@ -142,6 +142,7 @@ function displayServerState() {
 				removeFlow.call(flows, btnRemove.getAttribute("index"));
 				displayServerState();
 				btnSave.disabled = false;
+				btnStartStop.disabled = true;
 			};
 		});
 		["editable", "dropdown", "checkbox"].forEach((cellType) => {
@@ -154,6 +155,7 @@ function displayServerState() {
 					           event.target.innerText.trim();
 					changeFlow.call(flows[index], classes, text);
 					btnSave.disabled = false;
+					btnStartStop.disabled = true;
 				}
 			});
 		});
@@ -247,6 +249,7 @@ function onServerStateChanged(newState) {
 		}
 	}
 	btnSave.disabled = true;
+	btnStartStop.disabled = false;
 	console.log(serverState);
 	displayServerState();
 }
@@ -406,6 +409,7 @@ window.onload = () => {
 				addFlow.call(serverState.flows[flowType], flowType);
 				displayServerState();
 				btnSave.disabled = false;
+				btnStartStop.disabled = true;
 			}
 		});
 	});
