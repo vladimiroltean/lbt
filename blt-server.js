@@ -308,9 +308,6 @@ function startFlows(flows, flowType) {
 	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
 		/* Some warning messages are not harmful */
-		if (!data.includes("adjusting to")) {
-			stopTraffic();
-		}
 	});
 	plotter.on("exit", (code) => {
 		console.log("feedgnuplot process exited with code %s", code);
