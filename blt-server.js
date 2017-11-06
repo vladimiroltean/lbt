@@ -108,7 +108,7 @@ function onSourceSSHConnReady(flowType) {
 	} else {
 		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
 		                 (this.intervalType == "flood") ? "-f " :
-		                 "-i " + this.intervalMS) +
+		                 "-i " + (this.intervalMS / 1000)) +
 		       " -s " + this.packetSize + " " + this.destination.hostname;
 	}
 
