@@ -131,7 +131,8 @@ function onSourceSSHConnReady(flowType) {
 						var rtt = words[words.indexOf("ms") - 1].split("=")[1];
 						var time = (Date.now() - this.startTime) / 1000;
 						/* Plot an extra ping point */
-						state.plotter.ping.stdin.write(time + " " + this.id + " " + rtt + "\n");
+						state.plotter[flowType].stdin.write(
+								time + " " + this.id + " " + rtt + "\n");
 					} else {
 						console.log("%s %s Source STDOUT: %s",
 						            this.label, flowType, data);
@@ -188,7 +189,8 @@ function onDestinationSSHConnReady(flowType) {
 					var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 					this.data[time] = bw;
 					/* Plot an extra iperf point */
-					state.plotter[flowType].stdin.write(time + " " + this.id + " " + bw + "\n");
+					state.plotter[flowType].stdin.write(
+							time + " " + this.id + " " + bw + "\n");
 				} else {
 					console.log("%s %s Destination STDOUT: %s",
 					            this.label, flowType, data);
