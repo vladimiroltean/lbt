@@ -3,50 +3,52 @@
 <meta charset="UTF-8">
 <title>Bandwidth and Latency Tester</title>
 <body>
-  <header>Bandwidth and Latency Tester</header>
-  <div id="flow-plots">
-    <div id="iperf-gnuplot">
+  <div id="main">
+    <header>Bandwidth and Latency Tester</header>
+    <div id="flow-plots">
+      <div id="iperf-gnuplot">
+      </div>
+      <div id="ping-gnuplot">
+      </div>
     </div>
-    <div id="ping-gnuplot">
+    <div id="control">
+      <button type="button" id="btnStartStop">Start traffic</button>
+      <button type="button" id="btnSave">Save changes</button>
     </div>
-  </div>
-  <div id="control">
-    <button type="button" id="btnStartStop">Start traffic</button>
-    <button type="button" id="btnSave">Save changes</button>
-  </div>
-  <div id="flow-tables">
-    <p>iPerf flows</p>
-    <table id="iperf-table">
-      <thead>
-        <tr>
-          <th>Enabled</th>
-          <th>Label</th>
-          <th>Source</th>
-          <th>Destination</th>
-          <th>Port</th>
-          <th>Transport</th>
-          <th>(UDP) Bandwidth</th>
-          <th><button type="button" class="btnAdd">+</button></th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p>Ping flows</p>
-    <table id="ping-table">
-      <thead>
-        <tr>
-          <th>Enabled</th>
-          <th>Label</th>
-          <th>Source</th>
-          <th>Destination</th>
-          <th>Interval type</th>
-          <th>Interval (ms)</th>
-          <th>Packet size</th>
-          <th><button type="button" class="btnAdd">+</button></th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div id="flow-tables">
+      <p>iPerf flows</p>
+      <table id="iperf-table">
+        <thead>
+          <tr>
+            <th>Enabled</th>
+            <th>Label</th>
+            <th>Source</th>
+            <th>Destination</th>
+            <th>Port</th>
+            <th>Transport</th>
+            <th>(UDP) Bandwidth</th>
+            <th><button type="button" class="btnAdd">+</button></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p>Ping flows</p>
+      <table id="ping-table">
+        <thead>
+          <tr>
+            <th>Enabled</th>
+            <th>Label</th>
+            <th>Source</th>
+            <th>Destination</th>
+            <th>Interval type</th>
+            <th>Interval (ms)</th>
+            <th>Packet size</th>
+            <th><button type="button" class="btnAdd">+</button></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 </body>
 
