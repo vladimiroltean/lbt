@@ -79,44 +79,46 @@ function removeFlow(indexToRemove) {
 }
 
 function populateRow(flowType, flow) {
-	var inputEditable = serverState.running ? "" : "contenteditable";
+	var inputEditable = serverState.running ? " " : " contenteditable ";
 	var inputDisabled = serverState.running ? ' disabled' : '';
+	var index = ' index="' + (this.rowIndex - 1) + '"';
 
 	/* we use the "editable|checkbox|dropdown" class to put input event listeners,
 	 * and the other classes to easily discern in the common
 	 * listener which field was changed */
-	var flowEnabled = '<td> <input type="checkbox" class="checkbox flow-enabled"' +
-		(flow.enabled ? ' checked' : '') + inputDisabled + '></td>';
-	var label = '<td ' + inputEditable + ' class="editable label">' + flow.label + '</td>';
-	var sourceText = '<td ' + inputEditable + ' class="editable source">' + flow.sourceText + '</td>';
-	var destinationText = '<td ' + inputEditable + ' class="editable destination">' + flow.destinationText + '</td>';
-	var btnRemove = '<td> <button type="button" ' + inputDisabled + ' class="btnRemove">-</button> </td>';
+	var flowEnabled     = '<td> <input type="checkbox" class="checkbox flow-enabled"' +
+	                       index + (flow.enabled ? ' checked' : '') + inputDisabled + '></td>';
+	var label           = '<td ' + index + inputEditable + ' class="editable label">' + flow.label + '</td>';
+	var sourceText      = '<td ' + index + inputEditable + ' class="editable source">' + flow.sourceText + '</td>';
+	var destinationText = '<td ' + index + inputEditable + ' class="editable destination">' + flow.destinationText + '</td>';
+	var btnRemove       = '<td> <button type="button" ' + inputDisabled + index +
+	                      'class="btnRemove">-</button> </td>';
 	switch (flowType) {
 	case "iperf":
-		var port = '<td ' + inputEditable + ' class="editable port">' + flow.port + '</td>';
+		var port = '<td ' + index + inputEditable + ' class="editable port">' + flow.port + '</td>';
 		var transport = '<td>' +
-			'<select ' + inputDisabled + ' class="dropdown transport">' +
+			'<select ' + index + inputDisabled + ' class="dropdown transport" >' +
 			'<option value="udp" ' + ((flow.transport == "udp") ? "selected" : "") + '>UDP</option>' +
 			'<option value="tcp" ' + ((flow.transport == "tcp") ? "selected" : "") + '>TCP</option>' +
 			'</select>' +
 			'</td>';
-		var bandwidth = '<td ' + inputEditable + ' class="editable bandwidth">' + flow.bandwidth + '</td>';
+		var bandwidth = '<td ' + index + inputEditable + ' class="editable bandwidth">' + flow.bandwidth + '</td>';
 		this.innerHTML = flowEnabled + label + sourceText + destinationText + port + transport + bandwidth + btnRemove;
 		break;
 	case "ping":
 		var intervalType = '<td>' +
-			'<select ' + inputDisabled + ' class="dropdown interval-type">' +
+			'<select ' + index + inputDisabled + ' class="dropdown interval-type" >' +
 			'<option value="periodic" ' + ((flow.intervalType == "periodic") ? "selected" : "") + '>Periodic</option>' +
 			'<option value="adaptive" ' + ((flow.intervalType == "adaptive") ? "selected" : "") + '>Adaptive</option>' +
 			'<option value="flood" '    + ((flow.intervalType == "flood") ? "selected" : "") + '>Flood</option>' +
 			'</select>' +
 			'</td>';
-		var intervalMS = '<td ' + inputEditable + ' class="editable interval-ms">' + flow.intervalMS + '</td>';
-		var packetSize = '<td ' + inputEditable + ' class="editable packet-size">' + flow.packetSize + '</td>';
+		var intervalMS = '<td ' + index + inputEditable + ' class="editable interval-ms">' + flow.intervalMS + '</td>';
+		var packetSize = '<td ' + index + inputEditable + ' class="editable packet-size">' + flow.packetSize + '</td>';
 		this.innerHTML = flowEnabled + label + sourceText + destinationText + intervalType + intervalMS + packetSize + btnRemove;
 		break;
 	default:
-		console.log("populateRow: invalid flow type " + flowType);
+		throw new Error("populateRow: invalid flow type " + flowType);
 	}
 }
 
@@ -142,11 +144,7 @@ function displayServerState() {
 		});
 		[].forEach.call(table.getElementsByClassName("btnRemove"), (btnRemove) => {
 			btnRemove.onclick = () => {
-				var parentRow = this;
-				while (parentRow.nodeName.toLowerCase() != "tr") {
-					parentRow = parentRow.parentElement;
-				}
-				removeFlow.call(flows, parentRow.rowIndex - 1);
+				removeFlow.call(flows, btnRemove.getAttribute("index"));
 				displayServerState();
 				btnSave.disabled = false;
 			};
@@ -154,15 +152,11 @@ function displayServerState() {
 		["editable", "dropdown", "checkbox"].forEach((cellType) => {
 			[].forEach.call(table.getElementsByClassName(cellType), (cell) => {
 				cell.oninput = (event) => {
+					var index = cell.getAttribute("index");
 					var classes = event.target.classList;
 					var text = cellType == "checkbox" ? event.target.checked :
-				           	   cellType == "dropdown" ? event.target.value :
-				           	   event.target.innerText.trim();
-					var parentRow = event.target;
-					while (parentRow.nodeName.toLowerCase() != "tr") {
-						parentRow = parentRow.parentElement;
-					}
-					var index = parentRow.rowIndex - 1;
+					           cellType == "dropdown" ? event.target.value :
+					           event.target.innerText.trim();
 					changeFlow.call(flows[index], classes, text);
 					btnSave.disabled = false;
 				}
