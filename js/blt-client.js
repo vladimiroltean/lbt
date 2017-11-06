@@ -133,15 +133,10 @@ function displayServerState() {
 			var newRow = tbody.insertRow(tbody.rows.length);
 			populateRow.call(newRow, flowType, f);
 		});
-		/* Put listeners again on DOM objects */
 		[].forEach.call(table.getElementsByClassName("btnAdd"), (btnAdd) => {
-			btnAdd.onclick = () => {
-				addFlow.call(flows, flowType);
-				displayServerState();
-				btnSave.disabled = false;
-			}
 			btnAdd.disabled = serverState.running;
 		});
+		/* Put listeners again on DOM objects */
 		[].forEach.call(table.getElementsByClassName("btnRemove"), (btnRemove) => {
 			btnRemove.onclick = () => {
 				removeFlow.call(flows, btnRemove.getAttribute("index"));
@@ -412,6 +407,16 @@ function parseRecvFlows(flows) {
 
 window.onload = () => {
 	refresh();
+	["iperf", "ping"].forEach((flowType) => {
+		var table = document.getElementById(flowType + "-table");
+		[].forEach.call(table.getElementsByClassName("btnAdd"), (btnAdd) => {
+			btnAdd.onclick = () => {
+				addFlow.call(serverState.flows[flowType], flowType);
+				displayServerState();
+				btnSave.disabled = false;
+			}
+		});
+	});
 	btnSave.onclick = () => {
 		try {
 			xchgServerState("PUT", "/flows", { flows: curateFlowsForSend(serverState.flows) })
