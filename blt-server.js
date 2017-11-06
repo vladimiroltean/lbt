@@ -5,13 +5,13 @@ var http = require("http");
 var sshClient = require("ssh2").Client;
 var server = http.createServer();
 var url = require("url");
-var port = 8000;
 var html = readPlaintextFromFile("index.html", true);
 var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var { spawn, execSync } = require("child_process");
 var uuidv4 = require('uuid/v4');
 var sse;
 var state;
+var config = JSON.parse(readPlaintextFromFile("config.json"));
 
 function onHttpRequest(request, response) {
 	switch (request.method) {
@@ -230,48 +230,31 @@ function startFlows(flows, flowType) {
 
 	var feedgnuplotParams;
 	
-	if (flowType == "iperf") {
-		feedgnuplotParams = [
-			"--stream", "0.5",
-			"--domain",
-			"--dataid",
-			"--exit",
-			"--lines",
-			"--ymin", 0,
-			//"--ymax", 1000,
-			/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
-			"--xlen", "30",
-			"--xlabel", "Time (seconds)",
-			"--ylabel", "Bandwidth (Mbps)",
-			"--title", "iPerf3 Bandwidth",
-			"--terminal", "svg"
-		];
-	} else {
-		feedgnuplotParams = [
-			"--stream", "0.5",
-			"--domain",
-			"--dataid",
-			"--exit",
-			"--lines",
-			"--xmin", "0",
-			//"--xmax", "50",
-			"--xlen", "30",
-			"--ymin", "0",
-			"--xlabel", "RTT (ms)",
-			"--ylabel", "Packets",
-			"--title", "Ping Round Trip Time",
-			"--binwidth", "0.2",
-			"--terminal", "svg"
-		];
-	}
+	feedgnuplotParams = [
+		"--stream", "0.5",
+		"--domain", /* First column (time) is domain */
+		"--dataid", /* Second column (f.id) is dataid */
+		"--exit",
+		"--lines",
+		"--xmin", 0,
+		"--ymin", 0,
+		"--terminal", "svg"
+	];
+	if (config[flowType].xmax)   feedgnuplotParams.push("--xmax",   config[flowType].xmax);
+	if (config[flowType].ymax)   feedgnuplotParams.push("--ymax",   config[flowType].ymax);
+	if (config[flowType].xlen)   feedgnuplotParams.push("--xlen",   config[flowType].xlen);
+	if (config[flowType].xlabel) feedgnuplotParams.push("--xlabel", config[flowType].xlabel);
+	if (config[flowType].ylabel) feedgnuplotParams.push("--ylabel", config[flowType].ylabel);
+	if (config[flowType].title)  feedgnuplotParams.push("--title",  config[flowType].title);
+	/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
 
 	flows.forEach((f) => {
-		if (flowType == "iperf") {
-			feedgnuplotParams.push("--style", f.id, 'linewidth 2');
-			feedgnuplotParams.push("--legend", f.id, f.label);
-		} else {
+		if (config[flowType].plotStyle == "histogram") {
 			feedgnuplotParams.push("--legend", f.id, f.label);
 			feedgnuplotParams.push("--histogram", f.id);
+		} else {
+			feedgnuplotParams.push("--style", f.id, 'linewidth 2');
+			feedgnuplotParams.push("--legend", f.id, f.label);
 		}
 
 		f.srcSSHConn = new sshClient();
@@ -378,7 +361,8 @@ function onStartStopTraffic(newTrafficState) {
 }
 
 function onHttpListen() {
-	console.log("Server listening for http requests on port " + port);
+	console.log("Server listening for http requests on port %s",
+	            config.listenPort);
 	/* initialize the /sse route */
 	SSE = require("sse");
 	sse = new SSE(server);
@@ -557,4 +541,4 @@ try {
 
 server.on("request", onHttpRequest);
 server.on("error", onHttpServerError);
-server.listen(port, onHttpListen);
+server.listen(config.listenPort, onHttpListen);
