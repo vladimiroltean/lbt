@@ -7,7 +7,6 @@ plotting iPerf and ping traffic.
 TODO:
 
 * Hovering should give information about required format
-* Out-of-band error communication via sse
 * Upload SSH login keys
 * Download test data (bandwidth, rtt) as report
 * Flood ping stdout is not parsed properly

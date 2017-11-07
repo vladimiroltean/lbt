@@ -119,7 +119,7 @@ function onSourceSSHConnReady(flowType) {
 		if (err) {
 			console.log(err);
 			this.srcSSHConn.end();
-			stopTraffic();
+			stopTraffic(err);
 			return;
 		}
 		stream.on("close", (code, signal) => {
@@ -149,10 +149,10 @@ function onSourceSSHConnReady(flowType) {
 			}
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("%s %s Source :: STDERR: %s",
-			            this.label, flowType, data);
+			var msg = this.label + " " + flowType + " Source :: STDERR " + data;
+			console.log(msg);
 			this.srcSSHConn.end();
-			stopTraffic();
+			stopTraffic(new Error(msg));
 		});
 	});
 }
@@ -171,7 +171,7 @@ function onDestinationSSHConnReady(flowType) {
 		if (err) {
 			console.log(err);
 			this.dstSSHConn.end();
-			stopTraffic();
+			stopTraffic(err);
 			return;
 		}
 		stream.on("close", (code, signal) => {
@@ -206,10 +206,10 @@ function onDestinationSSHConnReady(flowType) {
 			}
 		});
 		stream.stderr.on("data", (data) => {
-			console.log("%s %s Destination :: STDERR: %s",
-			            this.label, flowType, data);
+			var msg = this.label + " " + flowType + " Destination :: STDERR " + data;
+			console.log(msg);
 			this.dstSSHConn.end();
-			stopTraffic();
+			stopTraffic(new Error(msg));
 		});
 	});
 }
@@ -267,8 +267,9 @@ function startFlows(flows, flowType) {
 		f.srcSSHConn = new sshClient();
 		f.srcSSHConn.on("ready", () => onSourceSSHConnReady.call(f, flowType));
 		f.srcSSHConn.on("error", (e) => {
-			console.log("SSH connection error: " + e);
-			stopTraffic();
+			var msg = "SSH connection error: " + e;
+			console.log(msg);
+			stopTraffic(new Error(msg));
 		});
 		f.srcSSHConn.config = {
 			username: f.source.user,
@@ -289,8 +290,9 @@ function startFlows(flows, flowType) {
 			f.dstSSHConn = new sshClient();
 			f.dstSSHConn.on("ready", () => onDestinationSSHConnReady.call(f, flowType));
 			f.dstSSHConn.on("error", (e) => {
-				console.log("SSH connection error: " + e);
-				stopTraffic();
+				var msg = "SSH connection error: " + e;
+				console.log(msg);
+				stopTraffic(new Error(msg));
 			});
 			f.dstSSHConn.config = {
 				username: f.destination.user,
@@ -324,7 +326,7 @@ function startTraffic() {
 	state.clients = [];
 }
 
-function stopTraffic() {
+function stopTraffic(error) {
 	["iperf", "ping"].forEach((flowType) => {
 		var enabled = state.flows[flowType].filter((e) => { return e.enabled });
 		if (enabled.length) {
@@ -336,6 +338,9 @@ function stopTraffic() {
 		}
 	});
 	state.clients.forEach((stream) => {
+		if (typeof error != "undefined") {
+			stream.send("error", JSON.stringify({ error: error.message }));
+		}
 		stream.close();
 	});
 	state.clients = [];
