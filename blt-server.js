@@ -28,7 +28,6 @@ function onHttpRequest(request, response) {
 			response.setHeader("Content-Type", "application/javascript");
 			response.end(blt_client_js);
 			break;
-		/* REST method calls */
 		case "/flows":
 			response.setHeader("Content-Type", "application/json");
 			response.end(curateStateForSend(state));
@@ -45,7 +44,6 @@ function onHttpRequest(request, response) {
 	case "PUT":
 		console.log("PUT " + request.url);
 		switch (request.url) {
-		/* Only REST method calls */
 		case "/flows":
 			if (state.running == true) {
 				httpLogErr(response, 405,
