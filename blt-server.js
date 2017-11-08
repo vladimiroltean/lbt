@@ -124,9 +124,16 @@ function onSourceSSHConnReady(flowType) {
 			return;
 		}
 		stream.on("close", (code, signal) => {
-			console.log("%s %s Source :: close :: code: %s, signal: %s",
-			            this.label, flowType, code, signal);
+			var msg = this.label + " " + flowType + " Source :: close :: code: " +
+			          code + ", signal: " + signal;
+			console.log(msg);
 			this.srcSSHConn.end();
+			if (code || signal) {
+				/* Abnormal termination. Notify browser. */
+				stopTraffic(new Error(msg));
+			} else {
+				stopTraffic();
+			}
 		});
 		stream.on("data", (data) => {
 			if (flowType == "ping") {
@@ -176,9 +183,14 @@ function onDestinationSSHConnReady(flowType) {
 			return;
 		}
 		stream.on("close", (code, signal) => {
-			console.log("%s %s Destination :: close :: code: %s, signal: %s",
-			            this.label, flowType, code, signal);
-			stopTraffic();
+			var msg = this.label + " " + flowType + " Destination :: close :: code: " +
+			          code + ", signal: " + signal;
+			console.log(msg);
+			if (code || signal) {
+				stopTraffic(new Error(msg));
+			} else {
+				stopTraffic();
+			}
 		});
 		stream.on("data", (data) => {
 			if (flowType == "iperf") {
