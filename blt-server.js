@@ -174,6 +174,7 @@ function onDestinationSSHConnReady(flowType) {
 	}
 	/* Nothing happens with ping on destination side (at the moment) */
 
+	this.startTime = Date.now();
 	console.log("%s %s Destination :: conn ready", this.label, flowType);
 	this.dstSSHConn.exec(cmd, { pty: true }, (err, stream) => {
 		if (err) {
@@ -203,7 +204,8 @@ function onDestinationSSHConnReady(flowType) {
 				} else if (data.includes("Mbits/sec")) {
 					var arr = data.toString().trim().split(/\ +/);
 					var bw = arr[arr.indexOf("Mbits/sec") - 1];
-					var time = arr[arr.indexOf("sec") - 1].split("-")[0];
+					//var time = arr[arr.indexOf("sec") - 1].split("-")[0];
+					var time = (Date.now() - this.startTime) / 1000;
 					this.data[time] = bw;
 					/* Plot an extra iperf point */
 					state.plotter[flowType].stdin.write(
