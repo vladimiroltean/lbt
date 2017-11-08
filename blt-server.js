@@ -204,7 +204,6 @@ function onDestinationSSHConnReady(flowType) {
 					var bw = arr[arr.indexOf("Mbits/sec") - 1];
 					//var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 					var time = (Date.now() - this.startTime) / 1000;
-					this.data[time] = bw;
 					/* Plot an extra iperf point */
 					state.plotter[flowType].stdin.write(
 							time + " " + this.id + " " + bw + "\n");
@@ -315,7 +314,6 @@ function startFlows(flows, flowType) {
 			};
 			f.dstSSHConn.connect(f.dstSSHConn.config);
 		}
-		f.data = {};
 	});
 	var plotter = spawn("feedgnuplot", feedgnuplotParams);
 	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, flowType, data));
