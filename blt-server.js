@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 
+const flowsFile = __dirname + "/flows.json";
 var fs = require("fs");
 var http = require("http");
 var sshClient = require("ssh2").Client;
 var server = http.createServer();
-var html = readPlaintextFromFile("index.html", true);
-var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
+var html = readPlaintextFromFile(__dirname + "/index.html", true);
+var blt_client_js = readPlaintextFromFile(__dirname + "/js/blt-client.js", true);
+var config = JSON.parse(readPlaintextFromFile(__dirname + "/config.json", true));
+var sshPrivateKey = readPlaintextFromFile(config.sshPrivateKey, true);
 var { spawn, execSync } = require("child_process");
 var uuidv4 = require('uuid/v4');
-var config = JSON.parse(readPlaintextFromFile("config.json", true));
-var sshPrivateKey = readPlaintextFromFile(config.sshPrivateKey, true);
 var sse;
 var state;
 
@@ -58,7 +59,7 @@ function onHttpRequest(request, response) {
 					 * part of confirmation */
 					response.setHeader("Content-Type", "application/json");
 					response.end(flowsString);
-					fs.writeFile("flows.json", flowsString, function onWrite() {
+					fs.writeFile(flowsFile, flowsString, function onWrite() {
 						console.log("Successfully written flows to file.");
 					});
 				} catch (reason) {
@@ -206,6 +207,8 @@ function onDestinationSSHConnReady(flowType) {
 					var time = (Date.now() - this.startTime) / 1000;
 					/* Plot an extra iperf point */
 					state.plotter[flowType].stdin.write(
+							time + " " + this.id + " " + bw + "\n");
+					console.log("feedgnuplot stdin: " +
 							time + " " + this.id + " " + bw + "\n");
 				} else {
 					console.log("%s %s Destination STDOUT: %s",
@@ -544,7 +547,7 @@ process.on("SIGABRT", onExit);
 process.on("SIGQUIT", onExit);
 
 try {
-	state = createNewState(readPlaintextFromFile("flows.json", false))
+	state = createNewState(readPlaintextFromFile(flowsFile, false))
 } catch (reason) {
 	console.log(reason);
 	console.log("initializing with empty iperf and ping flows array");
