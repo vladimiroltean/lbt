@@ -9,6 +9,7 @@ var blt_client_js = readPlaintextFromFile("js/blt-client.js", true);
 var { spawn, execSync } = require("child_process");
 var uuidv4 = require('uuid/v4');
 var config = JSON.parse(readPlaintextFromFile("config.json", true));
+var sshPrivateKey = readPlaintextFromFile(config.sshPrivateKey, true);
 var sse;
 var state;
 
@@ -275,7 +276,7 @@ function startFlows(flows, flowType) {
 			username: f.source.user,
 			host: f.source.hostname,
 			port: f.source.port,
-			privateKey: fs.readFileSync(".ssh/id_rsa")
+			privateKey: sshPrivateKey
 		};
 		if (flowType == "ping") {
 			/* Ping traffic is initiated through the
@@ -298,7 +299,7 @@ function startFlows(flows, flowType) {
 				username: f.destination.user,
 				host: f.destination.hostname,
 				port: f.destination.port,
-				privateKey: fs.readFileSync(".ssh/id_rsa")
+				privateKey: sshPrivateKey
 			};
 			f.dstSSHConn.connect(f.dstSSHConn.config);
 		}
