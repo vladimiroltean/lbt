@@ -6,11 +6,12 @@ var http = require("http");
 var sshClient = require("ssh2").Client;
 var server = http.createServer();
 var html = readPlaintextFromFile(__dirname + "/index.html", true);
-var blt_client_js = readPlaintextFromFile(__dirname + "/js/blt-client.js", true);
+var client_js = readPlaintextFromFile(__dirname + "/js/client.js", true);
 var config = JSON.parse(readPlaintextFromFile(__dirname + "/config.json", true));
 var sshPrivateKey = readPlaintextFromFile(config.sshPrivateKey, true);
 var { spawn, execSync } = require("child_process");
 var uuidv4 = require('uuid/v4');
+var readline = require("readline");
 var sse;
 var state;
 
@@ -25,9 +26,9 @@ function onHttpRequest(request, response) {
 			response.setHeader("Content-Type", "text/html");
 			response.end(html);
 			break;
-		case "/js/blt-client.js":
+		case "/js/client.js":
 			response.setHeader("Content-Type", "application/javascript");
-			response.end(blt_client_js);
+			response.end(client_js);
 			break;
 		case "/flows":
 			response.setHeader("Content-Type", "application/json");
@@ -115,6 +116,7 @@ function onSourceSSHConnReady(flowType) {
 	}
 
 	this.startTime = Date.now();
+	this.lastTime = this.startTime;
 	console.log("%s %s Client :: conn ready", this.label, flowType);
 	this.srcSSHConn.exec(cmd, { pty: true }, (err, stream) => {
 		if (err) {
@@ -139,10 +141,10 @@ function onSourceSSHConnReady(flowType) {
 		stream.on("data", (data) => {
 			if (flowType == "ping") {
 				stream.on("data", (data) => {
+					var time = (Date.now() - this.startTime) / 1000;
 					if (data.includes("ms")) {
 						var words = data.toString().trim().split(/\ +/);
 						var rtt = words[words.indexOf("ms") - 1].split("=")[1];
-						var time = (Date.now() - this.startTime) / 1000;
 						/* Plot an extra ping point */
 						state.plotter[flowType].stdin.write(
 								time + " " + this.id + " " + rtt + "\n");
@@ -358,7 +360,7 @@ function stopTraffic(error) {
 	});
 	state.clients.forEach((stream) => {
 		if (typeof error != "undefined") {
-			stream.send("error", JSON.stringify({
+			stream.send("server-err", JSON.stringify({
 				name: error.name,
 				message: error.message,
 				stack: error.stack

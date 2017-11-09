@@ -1,7 +1,7 @@
-Bandwidth and Latency Tester
+Latency and Bandwidth Tester
 ============================
 
-Bandwidth and Latency Tester (BLT) is a web application for generating and
+Latency and Bandwidth Tester (LBT) is a web application for generating and
 plotting iPerf and ping traffic.
 
 TODO:
