@@ -44,6 +44,7 @@ function onHttpRequest(request, response) {
 		break;
 	case "PUT":
 		console.log("PUT " + request.url);
+		request.setEncoding("utf8");
 		switch (request.url) {
 		case "/flows":
 			if (state.running == true) {
@@ -122,6 +123,7 @@ function onSourceSSHConnReady(flowType) {
 			stopTraffic(err);
 			return;
 		}
+		stream.setEncoding("utf8");
 		stream.on("close", (code, signal) => {
 			var msg = this.label + " " + flowType + " Source :: close :: code: " +
 			          code + ", signal: " + signal;
@@ -182,6 +184,7 @@ function onDestinationSSHConnReady(flowType) {
 			stopTraffic(err);
 			return;
 		}
+		stream.setEncoding("utf8");
 		stream.on("close", (code, signal) => {
 			var msg = this.label + " " + flowType + " Destination :: close :: code: " +
 			          code + ", signal: " + signal;
@@ -319,6 +322,8 @@ function startFlows(flows, flowType) {
 		}
 	});
 	var plotter = spawn("feedgnuplot", feedgnuplotParams);
+	plotter.stdout.setEncoding("utf8");
+	plotter.stderr.setEncoding("utf8");
 	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, flowType, data));
 	plotter.stderr.on("data", (data) => {
 		console.log("feedgnuplot stderr: %s", data);
