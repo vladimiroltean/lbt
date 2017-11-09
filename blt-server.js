@@ -358,7 +358,11 @@ function stopTraffic(error) {
 	});
 	state.clients.forEach((stream) => {
 		if (typeof error != "undefined") {
-			stream.send("error", JSON.stringify({ error: error.message }));
+			stream.send("error", JSON.stringify({
+				name: error.name,
+				message: error.message,
+				stack: error.stack
+			}));
 		}
 		stream.close();
 	});

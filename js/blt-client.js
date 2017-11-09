@@ -190,19 +190,20 @@ function xchgServerState(requestType, path, toSend) {
 
 function onSSEEvent(event) {
 	try {
-		var msg = JSON.parse(event.data);
 		if (!["iperf", "ping", "error"].includes(event.type)) {
 			throw new Error("invalid event type " + event.type);
 		}
-		if (event.type == "error") {
+		if (event.type == "server-err") {
 			alert("Server error: " + event.data);
+			console.log(event);
 		} else {
+			var msg = JSON.parse(event.data);
 			document.getElementById(event.type + "-gnuplot").innerHTML = msg.svg;
 		}
 	} catch (e) {
 		console.log(e.stack);
 		alert(e.name + ' while parsing event "' + event.data +
-		      ' from server: ' + e.message);
+		      '" from server: ' + e.message);
 	}
 }
 
@@ -225,7 +226,7 @@ function initSSE() {
 	};
 	sseStream.addEventListener("iperf", onSSEEvent);
 	sseStream.addEventListener("ping",  onSSEEvent);
-	sseStream.addEventListener("error", onSSEEvent);
+	sseStream.addEventListener("server-err", onSSEEvent);
 	/* Close the connection when the window is closed */
 	window.addEventListener("beforeunload", closeSSE);
 }
