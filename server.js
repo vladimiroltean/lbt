@@ -138,29 +138,31 @@ function onSourceSSHConnReady(flowType) {
 				stopTraffic();
 			}
 		});
-		stream.on("data", (data) => {
+		/* stdout */
+		readline.createInterface({ input: stream })
+		.on("line", (line) => {
 			if (flowType == "ping") {
-				stream.on("data", (data) => {
-					var time = (Date.now() - this.startTime) / 1000;
-					if (data.includes("ms")) {
-						var words = data.toString().trim().split(/\ +/);
-						var rtt = words[words.indexOf("ms") - 1].split("=")[1];
-						/* Plot an extra ping point */
-						state.plotter[flowType].stdin.write(
-								time + " " + this.id + " " + rtt + "\n");
-					} else {
-						console.log("%s %s Source STDOUT: %s",
-						            this.label, flowType, data);
-					}
-				});
+				var time = (Date.now() - this.startTime) / 1000;
+				if (line.includes("ms")) {
+					var words = line.trim().split(/\ +/);
+					var rtt = words[words.indexOf("ms") - 1].split("=")[1];
+					/* Plot an extra ping point */
+					state.plotter[flowType].stdin.write(
+							time + " " + this.id + " " + rtt + "\n");
+				} else {
+					console.log("%s %s Source STDOUT: %s",
+					            this.label, flowType, line);
+				}
 			} else {
 				/* iPerf3 reports are taken at destination */
 				console.log("%s %s Source :: STDOUT: %s",
-				            this.label, flowType, data);
+				            this.label, flowType, line);
 			}
 		});
-		stream.stderr.on("data", (data) => {
-			var msg = this.label + " " + flowType + " Source :: STDERR " + data;
+		/* stderr */
+		readline.createInterface({ input: stream.stderr })
+		.on("line", (line) => {
+			var msg = this.label + " " + flowType + " Source :: STDERR " + line;
 			console.log(msg);
 			this.srcSSHConn.end();
 			stopTraffic(new Error(msg));
@@ -197,36 +199,38 @@ function onDestinationSSHConnReady(flowType) {
 				stopTraffic();
 			}
 		});
-		stream.on("data", (data) => {
+		/* stdout */
+		readline.createInterface({ input: stream })
+		.on("line", (line) => {
 			if (flowType == "iperf") {
-				if (data.includes("Server listening on " + this.port)) {
+				if (line.includes("Server listening on " + this.port)) {
 					/* iPerf Server managed to start up.
 					 * Time to connect to iPerf client and start
 					 * that up as well.
 					 */
 					this.srcSSHConn.connect(this.srcSSHConn.config);
-				} else if (data.includes("Mbits/sec")) {
-					var arr = data.toString().trim().split(/\ +/);
+				} else if (line.includes("Mbits/sec")) {
+					var arr = line.trim().split(/\ +/);
 					var bw = arr[arr.indexOf("Mbits/sec") - 1];
 					//var time = arr[arr.indexOf("sec") - 1].split("-")[0];
 					var time = (Date.now() - this.startTime) / 1000;
 					/* Plot an extra iperf point */
 					state.plotter[flowType].stdin.write(
 							time + " " + this.id + " " + bw + "\n");
-					console.log("feedgnuplot stdin: " +
-							time + " " + this.id + " " + bw + "\n");
 				} else {
 					console.log("%s %s Destination STDOUT: %s",
-					            this.label, flowType, data);
+					            this.label, flowType, line);
 				}
 			} else {
 				/* Ping. Data is gathered in the source connection */
 				console.log("%s %s Destination :: STDOUT: %s",
-				            this.label, flowType, data);
+				            this.label, flowType, line);
 			}
 		});
-		stream.stderr.on("data", (data) => {
-			var msg = this.label + " " + flowType + " Destination :: STDERR " + data;
+		/* stderr */
+		readline.createInterface({ input: stream.stderr })
+		.on("line", (line) => {
+			var msg = this.label + " " + flowType + " Destination :: STDERR " + line;
 			console.log(msg);
 			this.dstSSHConn.end();
 			stopTraffic(new Error(msg));
@@ -236,9 +240,9 @@ function onDestinationSSHConnReady(flowType) {
 
 /* method of state.plotter.iperf and state.plotter.ping */
 function onGnuplotData(flowType, data) {
-	if (data.toString().includes("</svg>")) {
+	if (data.includes("</svg>")) {
 		/* New SVG can be reassembled. */
-		var halves = data.toString().split("</svg>");
+		var halves = data.split("</svg>");
 		this.svg += halves[0] + "</svg>";
 		/* Send it to the SSE clients */
 		state.clients.forEach((stream) => {
@@ -326,10 +330,17 @@ function startFlows(flows, flowType) {
 	var plotter = spawn("feedgnuplot", feedgnuplotParams);
 	plotter.stdout.setEncoding("utf8");
 	plotter.stderr.setEncoding("utf8");
+	/* feedgnuplot stdout is delimited by </svg> ending tag.
+	 * No need to emit line events. */
 	plotter.stdout.on("data", (data) => onGnuplotData.call(plotter, flowType, data));
-	plotter.stderr.on("data", (data) => {
-		console.log("feedgnuplot stderr: %s", data);
+	/* Parse stderr of feedgnuplot by lines */
+	readline.createInterface({ input: plotter.stderr })
+	.on("line", (line) => {
+		console.log("feedgnuplot stderr: %s", line);
 		/* Some warning messages are not harmful */
+		if (!line.includes("adjusting to")) {
+			stopTraffic();
+		}
 	});
 	plotter.on("exit", (code) => {
 		console.log("feedgnuplot process exited with code %s", code);
