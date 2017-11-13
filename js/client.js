@@ -190,7 +190,7 @@ function xchgServerState(requestType, path, toSend) {
 
 function onSSEEvent(event) {
 	try {
-		if (!["iperf", "ping", "error"].includes(event.type)) {
+		if (!["iperf", "ping", "server-err"].includes(event.type)) {
 			throw new Error("invalid event type " + event.type);
 		}
 		if (event.type == "server-err") {
