@@ -53,31 +53,41 @@ function onHttpRequest(request, response) {
 				           "Flow config changes not allowed while traffic is running");
 				break;
 			}
-			request.on("data", function onData(data) {
+			var body = "";
+			request.on("data", (chunk) => {
+				body += chunk;
+			});
+			request.on("end", () => {
 				try {
-					state = createNewState(data);
+					state = createNewState(body);
 					var flowsString = curateStateForSend(state);
-					/* Send flows back to client, as
-					 * part of confirmation */
-					response.setHeader("Content-Type", "application/json");
-					response.end(flowsString);
 					fs.writeFile(flowsFile, flowsString, function onWrite() {
 						console.log("Successfully written flows to file.");
+						/* Send flows back to client, as
+						 * part of confirmation */
+						response.setHeader("Content-Type", "application/json");
+						response.end(flowsString);
 					});
 				} catch (reason) {
-					httpLogErr(response, 400, "cannot parse flows from " + data + ", reason: " + reason);
+					httpLogErr(response, 400,
+					           "cannot parse flows from " + body +
+					           ", reason: " + reason);
 				}
 			});
 			break;
 		case "/running":
-			request.on("data", function onData(data) {
+			var body = "";
+			request.on("data", (chunk) => {
+				body += chunk;
+			});
+			request.on("end", () => {
 				try {
-					var msg = JSON.parse(data);
+					var msg = JSON.parse(body);
 					onStartStopTraffic(msg.running);
 					response.setHeader("Content-Type", "application/json");
 					response.end(JSON.stringify({ running: state.running }));
 				} catch (e) {
-					httpLogErr(response, 400, e + ": invalid request body " + data);
+					httpLogErr(response, 400, e + ": invalid request body " + body);
 				}
 			});
 			break;
