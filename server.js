@@ -110,7 +110,6 @@ function onSourceSSHConnReady(flowType) {
 		       " -c " + this.destination.hostname;
 	} else {
 		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
-		                 (this.intervalType == "flood") ? "-f " :
 		                 "-i " + (this.intervalMS / 1000)) +
 		       " -s " + this.packetSize + " " + this.destination.hostname +
 		       " | prl --count 1 --every 100";
@@ -472,7 +471,7 @@ function readPlaintextFromFile(filename, exitOnFail) {
  *                 id: [uuidv4],
  *                 source: "user@host",
  *                 destination: "user@host",
- *                 intervalType: "periodic|adaptive|flood",
+ *                 intervalType: "periodic|adaptive",
  *                 intervalMS: integer,
  *                 enabled: boolean,
  *                 label: string,

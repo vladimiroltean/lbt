@@ -110,7 +110,6 @@ function populateRow(flowType, flow) {
 			'<select ' + index + inputDisabled + ' class="dropdown interval-type" >' +
 			'<option value="periodic" ' + ((flow.intervalType == "periodic") ? "selected" : "") + '>Periodic</option>' +
 			'<option value="adaptive" ' + ((flow.intervalType == "adaptive") ? "selected" : "") + '>Adaptive</option>' +
-			'<option value="flood" '    + ((flow.intervalType == "flood") ? "selected" : "") + '>Flood</option>' +
 			'</select>' +
 			'</td>';
 		var intervalMS = '<td ' + index + inputEditable + ' class="editable interval-ms">' + flow.intervalMS + '</td>';
@@ -336,7 +335,7 @@ function curateFlowsForSend(flows) {
 		});
 	});
 	flows.ping.forEach((f) => {
-		if (!["adaptive", "periodic", "flood"].includes(f.intervalType)) {
+		if (!["adaptive", "periodic"].includes(f.intervalType)) {
 			throw new Error("flow " + JSON.stringify(f) + ": invalid interval type " + f.intervalType);
 		}
 		if (f.intervalType == "periodic" && isNaN(f.intervalMS)) {
@@ -384,7 +383,7 @@ function parseRecvFlows(flows) {
 		});
 	});
 	flows.ping.forEach((f) => {
-		if (!["adaptive", "periodic", "flood"].includes(f.intervalType)) {
+		if (!["adaptive", "periodic"].includes(f.intervalType)) {
 			throw new Error("flow " + JSON.stringify(f) + ": invalid interval type " + f.intervalType);
 		}
 		if (f.intervalType == "periodic" && isNaN(f.intervalMS)) {

@@ -9,4 +9,3 @@ TODO:
 * Hovering should give information about required format
 * Upload SSH login keys
 * Download test data (bandwidth, rtt) as report
-* Flood ping stdout is not parsed properly
