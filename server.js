@@ -128,8 +128,6 @@ function onSourceSSHConnReady(flowType) {
 		return;
 	}
 
-	this.startTime = Date.now();
-	this.lastTime = this.startTime;
 	console.log("%s %s Client :: conn ready", this.label, flowType);
 	this.srcSSHConn.exec(cmd, { pty: true }, (err, stream) => {
 		if (err) {
@@ -158,7 +156,7 @@ function onSourceSSHConnReady(flowType) {
 			 * Ping PIT values, as well as iPerf3 reports, are taken at destination.
 			 */
 			if (flowType == "ping" && config.ping.measurement == "rtt") {
-				var time = (Date.now() - this.startTime) / 1000;
+				var time = (Date.now() - state.startTime) / 1000;
 				if (line.includes("ms")) {
 					var words = line.trim().split(/\ +/);
 					var rtt = words[words.indexOf("ms") - 1].split("=")[1];
@@ -211,7 +209,6 @@ function onDestinationSSHConnReady(flowType) {
 		return;
 	}
 
-	this.startTime = Date.now();
 	console.log("%s %s Destination :: conn ready", this.label, flowType);
 	this.dstSSHConn.exec(cmd, { pty: true }, (err, stream) => {
 		if (err) {
@@ -234,7 +231,7 @@ function onDestinationSSHConnReady(flowType) {
 		/* stdout */
 		readline.createInterface({ input: stream })
 		.on("line", (line) => {
-			var time = (Date.now() - this.startTime) / 1000;
+			var time = (Date.now() - state.startTime) / 1000;
 			if (flowType == "iperf") {
 				if (line.includes("Server listening on " + this.port)) {
 					/* iPerf Server managed to start up.
@@ -322,6 +319,7 @@ function startFlows(flows, flowType) {
 	}
 	/* "--timefmt", "%H:%M:%S", "--set", 'format x "%H:%M:%S"', */
 
+	state.startTime = Date.now();
 	flows.forEach((f) => {
 		if (config[flowType].plotStyle == "histogram") {
 			feedgnuplotParams.push("--legend", f.id, f.label);
