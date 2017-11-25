@@ -112,7 +112,8 @@ function onSourceSSHConnReady(flowType) {
 		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
 		                 (this.intervalType == "flood") ? "-f " :
 		                 "-i " + (this.intervalMS / 1000)) +
-		       " -s " + this.packetSize + " " + this.destination.hostname;
+		       " -s " + this.packetSize + " " + this.destination.hostname +
+		       " | prl --count 1 --every 100";
 	}
 
 	this.startTime = Date.now();
