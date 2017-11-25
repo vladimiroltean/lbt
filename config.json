@@ -9,6 +9,7 @@
 		"ymin": "0",
 		"xlen": "60",
 		"binwidth": "0.01",
+		"measurement": "rtt",
 		"title": "Ping Round Trip Time"
 	},
 	"iperf": {

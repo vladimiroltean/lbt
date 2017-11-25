@@ -108,11 +108,14 @@ function onSourceSSHConnReady(flowType) {
 		cmd = "iperf3 -t 86400 -p " + this.port +
 		      ((this.transport == "udp") ? " -u -b " + this.bandwidth + "M " : " ") +
 		       " -c " + this.destination.hostname;
-	} else {
+	} else if (flowType == "ping") {
 		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
 		                 "-i " + (this.intervalMS / 1000)) +
 		       " -s " + this.packetSize + " " + this.destination.hostname +
 		       " | prl --count 1 --every 100";
+	} else {
+		console.log("Destination SSH Client :: invalid flow type %s", flowType);
+		return;
 	}
 
 	this.startTime = Date.now();
@@ -141,7 +144,10 @@ function onSourceSSHConnReady(flowType) {
 		/* stdout */
 		readline.createInterface({ input: stream })
 		.on("line", (line) => {
-			if (flowType == "ping") {
+			/* The only reports taken at traffic source are ping RTT values.
+			 * Ping PIT values, as well as iPerf3 reports, are taken at destination.
+			 */
+			if (flowType == "ping" && config.ping.measurement == "rtt") {
 				var time = (Date.now() - this.startTime) / 1000;
 				if (line.includes("ms")) {
 					var words = line.trim().split(/\ +/);
@@ -154,7 +160,7 @@ function onSourceSSHConnReady(flowType) {
 					            this.label, flowType, line);
 				}
 			} else {
-				/* iPerf3 reports are taken at destination */
+				/* If not taking reports, just print out the output as-is. */
 				console.log("%s %s Source :: STDOUT: %s",
 				            this.label, flowType, line);
 			}
@@ -176,8 +182,24 @@ function onDestinationSSHConnReady(flowType) {
 
 	if (flowType == "iperf") {
 		cmd = "iperf3 -1 -f m -i 0.5 -s -p " + this.port;
+	} else if (flowType == "ping") {
+		if (config.ping.measurement == "pit") {
+			var filter = 'icmp[icmptype] == 8';
+			cmd = 'tshark -i any -l -T fields ' +
+			      ' -E "separator=\ " ' +
+			      ' -e "frame.number" ' +
+			      ' -e "ip.src" ' +
+			      ' -e "frame.time_delta"' +
+			      ' -- ' + filter +
+			      ' | prl --count 1 --every 100';
+		} else {
+			/* Ping, but RTT measurement. Nothing to do here. */
+			return;
+		}
+	} else {
+		console.log("Destination SSH Client :: invalid flow type %s", flowType);
+		return;
 	}
-	/* Nothing happens with ping on destination side (at the moment) */
 
 	this.startTime = Date.now();
 	console.log("%s %s Destination :: conn ready", this.label, flowType);
@@ -202,6 +224,7 @@ function onDestinationSSHConnReady(flowType) {
 		/* stdout */
 		readline.createInterface({ input: stream })
 		.on("line", (line) => {
+			var time = (Date.now() - this.startTime) / 1000;
 			if (flowType == "iperf") {
 				if (line.includes("Server listening on " + this.port)) {
 					/* iPerf Server managed to start up.
@@ -212,8 +235,6 @@ function onDestinationSSHConnReady(flowType) {
 				} else if (line.includes("Mbits/sec")) {
 					var arr = line.trim().split(/\ +/);
 					var bw = arr[arr.indexOf("Mbits/sec") - 1];
-					//var time = arr[arr.indexOf("sec") - 1].split("-")[0];
-					var time = (Date.now() - this.startTime) / 1000;
 					/* Plot an extra iperf point */
 					state.plotter[flowType].stdin.write(
 							time + " " + this.id + " " + bw + "\n");
@@ -221,10 +242,22 @@ function onDestinationSSHConnReady(flowType) {
 					console.log("%s %s Destination STDOUT: %s",
 					            this.label, flowType, line);
 				}
-			} else {
-				/* Ping. Data is gathered in the source connection */
-				console.log("%s %s Destination :: STDOUT: %s",
-				            this.label, flowType, line);
+			} else if (flowType == "ping") {
+				/* PIT measurements taken by tshark. */
+				var arr = line.trim().split(/\ +/);
+				var ipSrc = arr[1];
+				var pit = arr[2];
+				var ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+				if (ipRegex.test(ipSrc)) {
+					/* Line contains something that might
+					 * as well be our IP address.
+					 * Let's plot it! */
+					state.plotter[flowType].stdin.write(
+							time + " " + this.id + " " + pit + "\n");
+				} else {
+					console.log("%s %s Destination :: STDOUT: %s",
+					            this.label, flowType, line);
+				}
 			}
 		});
 		/* stderr */
@@ -301,29 +334,37 @@ function startFlows(flows, flowType) {
 			port: f.source.port,
 			privateKey: sshPrivateKey
 		};
-		if (flowType == "ping") {
+		f.dstSSHConn = new sshClient();
+		f.dstSSHConn.on("ready", () => onDestinationSSHConnReady.call(f, flowType));
+		f.dstSSHConn.on("error", (e) => {
+			var msg = "SSH connection error: " + e;
+			console.log(msg);
+			stopTraffic(new Error(msg));
+		});
+		f.dstSSHConn.config = {
+			username: f.destination.user,
+			host: f.destination.hostname,
+			port: f.destination.port,
+			privateKey: sshPrivateKey
+		};
+		if (flowType == "ping" && config.ping.measurement == "rtt") {
 			/* Ping traffic is initiated through the
-			 * SSH connection to source.
+			 * SSH connection to source. RTT measurements are also
+			 * reported by the ping sender, so no connection
+			 * is necessary at the destination.
 			 */
 			f.srcSSHConn.connect(f.srcSSHConn.config);
+		} else if (flowType == "ping" && config.ping.measurement == "pit") {
+			/* If ping measurement is PIT (packet interrarival time),
+			 * this must be reported by the destination
+			 */
+			f.srcSSHConn.connect(f.srcSSHConn.config);
+			f.dstSSHConn.connect(f.dstSSHConn.config);
 		} else if (flowType == "iperf") {
 			/* iPerf traffic is initiated through the
 			 * source SSH connection as well, but an iPerf
 			 * server must first be started on the destination.
 			 */
-			f.dstSSHConn = new sshClient();
-			f.dstSSHConn.on("ready", () => onDestinationSSHConnReady.call(f, flowType));
-			f.dstSSHConn.on("error", (e) => {
-				var msg = "SSH connection error: " + e;
-				console.log(msg);
-				stopTraffic(new Error(msg));
-			});
-			f.dstSSHConn.config = {
-				username: f.destination.user,
-				host: f.destination.hostname,
-				port: f.destination.port,
-				privateKey: sshPrivateKey
-			};
 			f.dstSSHConn.connect(f.dstSSHConn.config);
 		}
 	});
