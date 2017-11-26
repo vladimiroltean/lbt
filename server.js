@@ -163,7 +163,6 @@ function onSourceSSHConnReady(flowType) {
 					/* Plot an extra ping point */
 					state.plotter[flowType].stdin.write(
 							time + " " + this.id + " " + rtt + "\n");
-					console.log("ping: " + time + " " + this.id + " " + rtt + "\n");
 				} else {
 					console.log("%s %s Source STDOUT: %s",
 					            this.label, flowType, line);
