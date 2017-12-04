@@ -193,8 +193,9 @@ function onDestinationSSHConnReady(flowType) {
 	} else if (flowType == "ping") {
 		if (config.ping.measurement == "pit") {
 			var filter = 'icmp[icmptype] == 8';
-			cmd = 'tshark -i any -l -T fields ' +
-			      ' -E "separator=\ " ' +
+			cmd = 'tshark -i ' + config.ping.measurementInterface +
+			      ' -l -T fields ' +
+			      ' -E "separator=/s" ' +
 			      ' -e "frame.number" ' +
 			      ' -e "ip.src" ' +
 			      ' -e "frame.time_delta"' +

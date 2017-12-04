@@ -10,6 +10,7 @@
 		"xlen": "60",
 		"binwidth": "0.01",
 		"measurement": "rtt",
+		"measurementInterface": "eth2",
 		"title": "Ping Round Trip Time"
 	},
 	"iperf": {
