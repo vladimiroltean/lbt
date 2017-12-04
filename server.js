@@ -252,19 +252,25 @@ function onDestinationSSHConnReady(flowType) {
 				}
 			} else if (flowType == "ping") {
 				/* PIT measurements taken by tshark. */
-				var arr = line.trim().split(/\ +/);
-				var ipSrc = arr[1];
-				var pit = arr[2];
+				var words = line.trim().split(/\ +/);
+				var pit   = words[words.length - 1];
+				var ipSrc = words[words.length - 2];
 				var ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-				if (ipRegex.test(ipSrc)) {
-					/* Line contains something that might
-					 * as well be our IP address.
-					 * Let's plot it! */
-					state.plotter[flowType].stdin.write(
-							time + " " + this.id + " " + pit + "\n");
-				} else {
-					console.log("%s %s Destination :: STDOUT: %s",
-					            this.label, flowType, line);
+				try {
+					var pitMs = +pit * 1000;
+					if (ipRegex.test(ipSrc)) {
+						/* Line contains something that might
+						 * as well be our IP address.
+						 * Let's plot it! */
+						state.plotter[flowType].stdin.write(
+								time + " " + this.id + " " + pitMs + "\n");
+					} else {
+						console.log("%s %s Destination :: STDOUT: %s",
+						            this.label, flowType, line);
+					}
+				} catch (e) {
+					console.log("%s %s Destination :: invalid PIT %s",
+					            this.label, flowType, pit);
 				}
 			}
 		});
