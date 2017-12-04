@@ -115,14 +115,14 @@ function onSourceSSHConnReady(flowType) {
 
 	if (flowType == "iperf") {
 		/* Run for 24 hours */
-		cmd = "taskset 01 iperf3 -t 86400 -p " + this.port +
+		cmd = "iperf3 -t 86400 -p " + this.port +
 		      ((this.transport == "udp") ? " -u -b " + this.bandwidth + "M " : " ") +
 		       " -c " + this.destination.hostname;
 	} else if (flowType == "ping") {
-		cmd = "taskset 02 chrt -r 50 ping " + ((this.intervalType == "adaptive") ? "-A " :
+		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
 		                 "-i " + (this.intervalMS / 1000)) +
 		       " -s " + this.packetSize + " " + this.destination.hostname +
-		       " -l 1 | prl --count 1 --every 100";
+		       " | prl --count 1 --every 100";
 	} else {
 		console.log("Destination SSH Client :: invalid flow type %s", flowType);
 		return;
@@ -189,7 +189,7 @@ function onDestinationSSHConnReady(flowType) {
 	var cmd;
 
 	if (flowType == "iperf") {
-		cmd = "taskset 01 iperf3 -1 -f m -i 0.5 -s -p " + this.port;
+		cmd = "iperf3 -1 -f m -i 0.5 -s -p " + this.port;
 	} else if (flowType == "ping") {
 		if (config.ping.measurement == "pit") {
 			var filter = 'icmp[icmptype] == 8';
