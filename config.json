@@ -4,14 +4,14 @@
 	"ping": {
 		"plotStyle": "lineGraph",
 		"xlabel": "Time (seconds)",
-		"ylabel": "RTT (ms)",
+		"ylabel": "PIT (ms)",
 		"xmin": "0",
 		"ymin": "0",
 		"xlen": "60",
 		"binwidth": "0.01",
-		"measurement": "rtt",
+		"measurement": "pit",
 		"measurementInterface": "eth2",
-		"title": "Ping Round Trip Time"
+		"title": "Ping Packet Inter-arrival Time"
 	},
 	"iperf": {
 		"plotStyle": "lineGraph",
