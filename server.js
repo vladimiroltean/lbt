@@ -192,15 +192,12 @@ function onDestinationSSHConnReady(flowType) {
 		cmd = "iperf3 -1 -f m -i 0.5 -s -p " + this.port;
 	} else if (flowType == "ping") {
 		if (config.ping.measurement == "pit") {
-			var filter = 'icmp[icmptype] == 8';
-			cmd = 'tshark -i ' + config.ping.measurementInterface +
-			      ' -l -T fields ' +
-			      ' -E "separator=/s" ' +
-			      ' -e "frame.number" ' +
-			      ' -e "ip.src" ' +
-			      ' -e "frame.time_delta"' +
-			      ' -- ' + filter +
-			      ' | prl --count 1 --every 100';
+			var filter = 'src host ' + this.source.hostname +
+			             ' and icmp[icmptype] == icmp-echo';
+			cmd = 'tcpdump -i ' + config.ping.measurementInterface +
+			      ' -n -l --buffer-size 10240 -ttt -j adapter_unsynced' +
+			      ' -f ' + filter;
+			       " | prl --count 1 --every 100";
 		} else {
 			/* Ping, but RTT measurement. Nothing to do here. */
 			return;
@@ -229,6 +226,7 @@ function onDestinationSSHConnReady(flowType) {
 				stopTraffic();
 			}
 		});
+		this.lastSeq = 0;
 		/* stdout */
 		readline.createInterface({ input: stream })
 		.on("line", (line) => {
@@ -251,19 +249,31 @@ function onDestinationSSHConnReady(flowType) {
 					            this.label, flowType, line);
 				}
 			} else if (flowType == "ping") {
-				/* PIT measurements taken by tshark. */
-				var words = line.trim().split(/\ +/);
-				var pit   = words[words.length - 1];
-				var ipSrc = words[words.length - 2];
-				var ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+				/* PIT measurements taken by tcpdump. */
+				var words = line.trim().split(/[, ]+/);
 				try {
-					var pitMs = +pit * 1000;
-					if (ipRegex.test(ipSrc)) {
-						/* Line contains something that might
-						 * as well be our IP address.
-						 * Let's plot it! */
-						state.plotter[flowType].stdin.write(
-								time + " " + this.id + " " + pitMs + "\n");
+					if (words.includes("seq")) {
+						/* This is a line containing a valid tcpdump packet.
+						 * Let's inspect it.
+						 */
+						var pit = words[0];
+						var seq = words[words.indexOf("seq") + 1];
+						/* Convert seq to numeric value */
+						seq = +seq;
+						if (seq == this.lastSeq + 1) {
+							/* PIT output format: HH:MM:SS.msmsms */
+							var hms     = pit.split(":");
+							var hours   = hms[0];
+							var minutes = hms[1];
+							var seconds = hms[2];
+							var pitMs = ((hours * 24 * 60) + (minutes * 60) + seconds) * 1000;
+							state.plotter[flowType].stdin.write(
+									time + " " + this.id + " " + pitMs + "\n");
+						} else {
+							console.log("seq %s, lastSeq %s. skipping.",
+							            seq, this.lastSeq);
+						}
+						this.lastSeq = seq;
 					} else {
 						console.log("%s %s Destination :: STDOUT: %s",
 						            this.label, flowType, line);
