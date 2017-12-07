@@ -279,6 +279,7 @@ function onDestinationSSHConnReady(flowType) {
 						            this.label, flowType, line);
 					}
 				} catch (e) {
+					console.log(e);
 					console.log("%s %s Destination :: invalid PIT %s",
 					            this.label, flowType, pit);
 				}
