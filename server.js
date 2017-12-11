@@ -169,8 +169,8 @@ function onSourceSSHConnReady(flowType) {
 				}
 			} else {
 				/* If not taking reports, just print out the output as-is. */
-				console.log("%s %s Source :: STDOUT: %s",
-				            this.label, flowType, line);
+				//console.log("%s %s Source :: STDOUT: %s",
+					    //this.label, flowType, line);
 			}
 		});
 		/* stderr */
