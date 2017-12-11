@@ -260,20 +260,19 @@ function onDestinationSSHConnReady(flowType) {
 						var seq = words[words.indexOf("seq") + 1];
 						/* Convert seq to numeric value */
 						seq = +seq;
-						if (seq == this.lastSeq + 1) {
-							/* PIT output format: HH:MM:SS.msmsms */
-							var hms     = pit.split(":");
-							var hours   = hms[0];
-							var minutes = hms[1];
-							var seconds = hms[2];
-							var pitMs = ((hours * 24 * 60) + (minutes * 60) + seconds) * 1000;
-							state.plotter[flowType].stdin.write(
-									time + " " + this.id + " " + pitMs + "\n");
-						} else {
-							console.log("seq %s, lastSeq %s. skipping.",
-							            seq, this.lastSeq);
+						if (seq != this.lastSeq + 1) {
+							console.log("skipped %s packets from seq %s to %s.",
+							            seq - this.lastSeq, this.lastSeq, seq);
 						}
 						this.lastSeq = seq;
+						/* PIT output format: HH:MM:SS.msmsms */
+						var hms     = pit.split(":");
+						var hours   = hms[0];
+						var minutes = hms[1];
+						var seconds = hms[2];
+						var pitMs = ((hours * 24 * 60) + (minutes * 60) + seconds) * 1000;
+						state.plotter[flowType].stdin.write(
+								time + " " + this.id + " " + pitMs + "\n");
 					} else {
 						console.log("%s %s Destination :: STDOUT: %s",
 						            this.label, flowType, line);
