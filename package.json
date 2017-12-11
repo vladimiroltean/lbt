@@ -7,7 +7,7 @@
   ],
   "name": "lbt",
   "description": "Latency and Bandwidth Tester is a web application for generating and plotting iPerf and ping traffic",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "GPL-2.0",
   "dependencies": {
     "uuid": "^3.1.0",
