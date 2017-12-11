@@ -122,7 +122,7 @@ function onSourceSSHConnReady(flowType) {
 		cmd = "ping " + ((this.intervalType == "adaptive") ? "-A " :
 		                 "-i " + (this.intervalMS / 1000)) +
 		       " -s " + this.packetSize + " " + this.destination.hostname +
-		       " | prl --count 1 --every 100";
+		       " | prl --count 1 --every 5ms";
 	} else {
 		console.log("Destination SSH Client :: invalid flow type %s", flowType);
 		return;
@@ -196,7 +196,8 @@ function onDestinationSSHConnReady(flowType) {
 			             " and icmp[icmptype] == icmp-echo";
 			cmd = "tcpdump -i " + config.ping.measurementInterface +
 			      " -n -l --buffer-size 10240 -ttt -j adapter_unsynced" +
-			      " -f " + filter;
+			      " --immediate-mode -- " + filter +
+			      " | prl --count 1 --every 5ms";
 		} else {
 			/* Ping, but RTT measurement. Nothing to do here. */
 			return;
