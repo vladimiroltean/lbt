@@ -192,12 +192,11 @@ function onDestinationSSHConnReady(flowType) {
 		cmd = "iperf3 -1 -f m -i 0.5 -s -p " + this.port;
 	} else if (flowType == "ping") {
 		if (config.ping.measurement == "pit") {
-			var filter = 'src host ' + this.source.hostname +
-			             ' and icmp[icmptype] == icmp-echo';
-			cmd = 'tcpdump -i ' + config.ping.measurementInterface +
-			      ' -n -l --buffer-size 10240 -ttt -j adapter_unsynced' +
-			      ' -f ' + filter;
-			       " | prl --count 1 --every 100";
+			var filter = "src host " + this.source.hostname +
+			             " and icmp[icmptype] == icmp-echo";
+			cmd = "tcpdump -i " + config.ping.measurementInterface +
+			      " -n -l --buffer-size 10240 -ttt -j adapter_unsynced" +
+			      " -f " + filter;
 		} else {
 			/* Ping, but RTT measurement. Nothing to do here. */
 			return;
