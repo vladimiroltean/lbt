@@ -192,11 +192,11 @@ function onSSEEvent(event) {
 		if (!["iperf", "ping", "server-err"].includes(event.type)) {
 			throw new Error("invalid event type " + event.type);
 		}
+		var msg = JSON.parse(event.data);
 		if (event.type == "server-err") {
-			alert("Server error: " + event.data);
+			alert("Server error!\n" + msg.stack + "\n");
 			console.log(event);
 		} else {
-			var msg = JSON.parse(event.data);
 			document.getElementById(event.type + "-gnuplot").innerHTML = msg.svg;
 		}
 	} catch (e) {
