@@ -83,12 +83,13 @@ function onHttpRequest(request, response) {
 			request.on("end", () => {
 				try {
 					var msg = JSON.parse(body);
-					onStartStopTraffic(msg.running);
-					response.setHeader("Content-Type", "application/json");
-					response.end(JSON.stringify({ running: state.running }));
 				} catch (e) {
 					httpLogErr(response, 400, e + ": invalid request body " + body);
+					return;
 				}
+				onStartStopTraffic(msg.running);
+				response.setHeader("Content-Type", "application/json");
+				response.end(JSON.stringify({ running: state.running }));
 			});
 			break;
 		default:
@@ -138,8 +139,9 @@ function onSourceSSHConnReady(flowType) {
 		}
 		stream.setEncoding("utf8");
 		stream.on("close", (code, signal) => {
-			var msg = this.label + " " + flowType + " Source :: close :: code: " +
-			          code + ", signal: " + signal;
+			var msg = 'Command "' + cmd + '" on ' +
+			          this.srcSSHConn.toString() +
+			          ' exited with code ' + code + ' and signal ' + signal;
 			console.log(msg);
 			this.srcSSHConn.end();
 			if (code || signal) {
@@ -217,8 +219,9 @@ function onDestinationSSHConnReady(flowType) {
 		}
 		stream.setEncoding("utf8");
 		stream.on("close", (code, signal) => {
-			var msg = this.label + " " + flowType + " Destination :: close :: code: " +
-			          code + ", signal: " + signal;
+			var msg = 'Command "' + cmd + '" on ' +
+			          this.dstSSHConn.toString() +
+			          ' exited with code ' + code + ' and signal ' + signal;
 			console.log(msg);
 			if (code || signal) {
 				stopTraffic(new Error(msg));
@@ -313,6 +316,12 @@ function onGnuplotData(flowType, data) {
 	}
 }
 
+function sshConnToString() {
+	return this.config.username + '@' +
+	       this.config.host + ':' +
+	       this.config.port;
+}
+
 function startFlows(flows, flowType) {
 	if (!flows.length) { return; }
 
@@ -348,9 +357,11 @@ function startFlows(flows, flowType) {
 		}
 
 		f.srcSSHConn = new sshClient();
+		f.srcSSHConn.toString = sshConnToString.bind(f.srcSSHConn);
 		f.srcSSHConn.on("ready", () => onSourceSSHConnReady.call(f, flowType));
 		f.srcSSHConn.on("error", (e) => {
-			var msg = "SSH connection error: " + e;
+			var msg = "SSH connection to " +
+			          f.srcSSHConn.toString() + ": " + e;
 			console.log(msg);
 			stopTraffic(new Error(msg));
 		});
@@ -361,9 +372,11 @@ function startFlows(flows, flowType) {
 			privateKey: sshPrivateKey
 		};
 		f.dstSSHConn = new sshClient();
+		f.dstSSHConn.toString = sshConnToString.bind(f.dstSSHConn);
 		f.dstSSHConn.on("ready", () => onDestinationSSHConnReady.call(f, flowType));
 		f.dstSSHConn.on("error", (e) => {
-			var msg = "SSH connection error: " + e;
+			var msg = "SSH connection to " +
+			          f.dstSSHConn.toString() + ": " + e;
 			console.log(msg);
 			stopTraffic(new Error(msg));
 		});
